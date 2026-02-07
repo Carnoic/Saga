@@ -1,19 +1,21 @@
-# Build stage
+# Optimized for low memory environments (Railway free tier)
 FROM node:20-alpine AS builder
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
+# Use npm instead of pnpm to reduce memory overhead
 WORKDIR /app
 
-# Copy package files
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY packages/shared/package.json ./packages/shared/
+# Copy package files first
+COPY package.json ./
 COPY apps/api/package.json ./apps/api/
 COPY apps/web/package.json ./apps/web/
+COPY packages/shared/package.json ./packages/shared/
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Create simplified package.json for npm (remove workspace protocol)
+RUN sed -i 's/"@saga\/shared": "workspace:\*"/"@saga\/shared": "file:..\/..\/packages\/shared"/g' apps/api/package.json && \
+    sed -i 's/"@saga\/shared": "workspace:\*"/"@saga\/shared": "file:..\/..\/packages\/shared"/g' apps/web/package.json
+
+# Install dependencies with npm
+RUN npm install --legacy-peer-deps
 
 # Copy source code
 COPY packages/shared ./packages/shared
@@ -22,51 +24,55 @@ COPY apps/web ./apps/web
 COPY tsconfig.json ./
 
 # Build shared package
-RUN pnpm --filter @saga/shared build
+WORKDIR /app/packages/shared
+RUN npm run build
 
 # Generate Prisma client
-RUN pnpm --filter @saga/api db:generate
+WORKDIR /app/apps/api
+RUN npx prisma generate
 
 # Build frontend
-RUN pnpm --filter @saga/web build
+WORKDIR /app/apps/web
+ENV NODE_OPTIONS="--max-old-space-size=512"
+RUN npm run build
 
 # Build backend
-RUN pnpm --filter @saga/api build
+WORKDIR /app/apps/api
+RUN npm run build
 
-# Production stage
+# Production stage - minimal image
 FROM node:20-alpine AS production
-
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
 
-# Copy package files
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY packages/shared/package.json ./packages/shared/
-COPY apps/api/package.json ./apps/api/
+# Copy only what's needed for production
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/apps/api/package.json ./apps/api/
+COPY --from=builder /app/packages/shared/package.json ./packages/shared/
 
 # Install production dependencies only
-RUN pnpm install --prod --frozen-lockfile
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
 
 # Copy built files
 COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 COPY --from=builder /app/apps/web/dist ./apps/web/dist
-COPY --from=builder /app/node_modules/.pnpm/@prisma+client*/node_modules/.prisma ./node_modules/.prisma
 
-# Create storage directory
-RUN mkdir -p /app/storage
+# Create directories
+RUN mkdir -p /app/storage /app/data
 
 # Set environment variables
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOST=0.0.0.0
 ENV STORAGE_PATH=/app/storage
+ENV DATABASE_URL=file:/app/data/saga.db
 
-# Expose port
 EXPOSE 3000
 
-# Start the server
-CMD ["node", "apps/api/dist/index.js"]
+WORKDIR /app/apps/api
+
+# Run migrations and start server
+CMD npx prisma migrate deploy && node dist/index.js
