@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:stplan.se)",
+      "Bash(npx prisma:*)",
+      "Bash(npx prisma migrate:*)",
+      "Bash(pnpm --dir \"F:/Kodning/Saga/apps/api\" prisma generate:*)",
+      "Bash(pnpm db:generate:*)",
+      "Bash(cmd.exe /c \"cd /d F:\\\\Kodning\\\\Saga && pnpm db:generate\")",
+      "Bash(cmd.exe /c \"cd /d F:\\\\Kodning\\\\Saga\\\\apps\\\\api && npx prisma generate\")",
+      "Bash(cmd.exe /c \"cd /d F:\\\\Kodning\\\\Saga\\\\apps\\\\api && npx prisma generate 2>&1\")",
+      "Bash(powershell.exe -Command \"cd ''F:\\\\Kodning\\\\Saga\\\\apps\\\\api''; npx prisma generate\")",
+      "Bash(powershell.exe -Command \"Get-Command pnpm,npm,node -ErrorAction SilentlyContinue | Select-Object Name,Source\")",
+      "Bash(powershell.exe -Command \"[Environment]::GetEnvironmentVariable\\(''PATH'', ''User''\\)\")",
+      "Bash(tr:*)"
+    ]
+  }
+}

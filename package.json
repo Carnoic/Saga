@@ -1,0 +1,39 @@
+{
+  "name": "saga",
+  "version": "1.0.0",
+  "description": "ST/BT Planerings- och Dokumentationssystem",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "dev:api": "pnpm --filter @saga/api dev",
+    "dev:web": "pnpm --filter @saga/web dev",
+    "build": "pnpm -r build",
+    "build:api": "pnpm --filter @saga/api build",
+    "build:web": "pnpm --filter @saga/web build",
+    "build:prod": "pnpm db:generate && pnpm build",
+    "start": "node apps/api/dist/index.js",
+    "start:prod": "NODE_ENV=production node apps/api/dist/index.js",
+    "test": "pnpm -r test",
+    "test:api": "pnpm --filter @saga/api test",
+    "test:web": "pnpm --filter @saga/web test",
+    "lint": "pnpm -r lint",
+    "db:generate": "pnpm --filter @saga/api db:generate",
+    "db:migrate": "pnpm --filter @saga/api db:migrate",
+    "db:migrate:prod": "pnpm --filter @saga/api db:migrate:prod",
+    "db:seed": "pnpm --filter @saga/api db:seed",
+    "db:studio": "pnpm --filter @saga/api db:studio"
+  },
+  "keywords": [
+    "st-läkare",
+    "bt-läkare",
+    "specialistutbildning",
+    "medicinsk utbildning",
+    "portfolio"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}

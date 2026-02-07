@@ -1,0 +1,382 @@
+// SAGA Database Schema
+// ST/BT Planerings- och Dokumentationssystem
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER & AUTH
+// ============================================
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("ST_BT") // ST_BT, HANDLEDARE, STUDIEREKTOR, ADMIN
+  clinicId  String?
+  clinic    Clinic?  @relation(fields: [clinicId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  traineeProfile        TraineeProfile?
+  supervisedTrainees    TraineeProfile[]       @relation("Supervisor")
+  assessmentsGiven      Assessment[]           @relation("Assessor")
+  supervisionMeetings   SupervisionMeeting[]   @relation("SupervisorMeeting")
+  subGoalSignatures     TraineeSubGoalProgress[] @relation("SignedBy")
+  auditLogs             AuditLog[]
+  sessions              Session[]
+  notifications         Notification[]
+  notificationPreference NotificationPreference?
+
+  @@index([email])
+  @@index([clinicId])
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+}
+
+// ============================================
+// CLINIC
+// ============================================
+
+model Clinic {
+  id           String   @id @default(uuid())
+  name         String
+  organization String?
+  createdAt    DateTime @default(now())
+
+  // Relations
+  users           User[]
+  traineeProfiles TraineeProfile[]
+}
+
+// ============================================
+// TRAINEE PROFILE
+// ============================================
+
+model TraineeProfile {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trackType      String   // ST, BT
+  specialty      String?
+  clinicId       String
+  clinic         Clinic   @relation(fields: [clinicId], references: [id])
+  startDate      DateTime
+  plannedEndDate DateTime
+  supervisorId   String?
+  supervisor     User?    @relation("Supervisor", fields: [supervisorId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  rotations           Rotation[]
+  courses             Course[]
+  assessments         Assessment[]
+  supervisionMeetings SupervisionMeeting[]
+  certificates        Certificate[]
+  subGoalProgress     TraineeSubGoalProgress[]
+
+  @@index([clinicId])
+  @@index([supervisorId])
+}
+
+// ============================================
+// GOAL SPECIFICATION & SUBGOALS
+// ============================================
+
+model GoalSpec {
+  id        String   @id @default(uuid())
+  name      String
+  version   String
+  specialty String?
+  source    String?
+  createdAt DateTime @default(now())
+
+  subGoals SubGoal[]
+
+  @@unique([name, version])
+}
+
+model SubGoal {
+  id          String  @id @default(uuid())
+  goalSpecId  String
+  goalSpec    GoalSpec @relation(fields: [goalSpecId], references: [id], onDelete: Cascade)
+  code        String
+  title       String
+  description String?
+  category    String  // MEDICINSK_KOMPETENS, KOMMUNIKATION, LEDARSKAP, VETENSKAP, PROFESSIONALISM
+  sortOrder   Int     @default(0)
+
+  // Relations
+  progress             TraineeSubGoalProgress[]
+  courseSubGoals       CourseSubGoal[]
+  assessmentSubGoals   AssessmentSubGoal[]
+  certificateSubGoals  CertificateSubGoal[]
+  rotationSubGoals     RotationSubGoal[]
+
+  @@unique([goalSpecId, code])
+  @@index([goalSpecId])
+  @@index([category])
+}
+
+model TraineeSubGoalProgress {
+  id               String    @id @default(uuid())
+  traineeProfileId String
+  traineeProfile   TraineeProfile @relation(fields: [traineeProfileId], references: [id], onDelete: Cascade)
+  subGoalId        String
+  subGoal          SubGoal   @relation(fields: [subGoalId], references: [id], onDelete: Cascade)
+  status           String    @default("EJ_PABORJAD") // EJ_PABORJAD, PAGAENDE, UPPNADD
+  notes            String?
+  signedById       String?
+  signedBy         User?     @relation("SignedBy", fields: [signedById], references: [id])
+  signedAt         DateTime?
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([traineeProfileId, subGoalId])
+  @@index([traineeProfileId])
+  @@index([subGoalId])
+}
+
+// ============================================
+// ROTATION (PLACERING)
+// ============================================
+
+model Rotation {
+  id               String   @id @default(uuid())
+  traineeProfileId String
+  traineeProfile   TraineeProfile @relation(fields: [traineeProfileId], references: [id], onDelete: Cascade)
+  unit             String
+  specialtyArea    String?
+  startDate        DateTime
+  endDate          DateTime
+  planned          Boolean  @default(false)
+  supervisorName   String?
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  rotationSubGoals RotationSubGoal[]
+
+  @@index([traineeProfileId])
+  @@index([startDate, endDate])
+}
+
+model RotationSubGoal {
+  id         String   @id @default(uuid())
+  rotationId String
+  rotation   Rotation @relation(fields: [rotationId], references: [id], onDelete: Cascade)
+  subGoalId  String
+  subGoal    SubGoal  @relation(fields: [subGoalId], references: [id], onDelete: Cascade)
+
+  @@unique([rotationId, subGoalId])
+}
+
+// ============================================
+// COURSE (KURS)
+// ============================================
+
+model Course {
+  id               String    @id @default(uuid())
+  traineeProfileId String
+  traineeProfile   TraineeProfile @relation(fields: [traineeProfileId], references: [id], onDelete: Cascade)
+  title            String
+  provider         String?
+  startDate        DateTime
+  endDate          DateTime?
+  hours            Int?
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Relations
+  courseSubGoals CourseSubGoal[]
+
+  @@index([traineeProfileId])
+}
+
+model CourseSubGoal {
+  id        String  @id @default(uuid())
+  courseId  String
+  course    Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  subGoalId String
+  subGoal   SubGoal @relation(fields: [subGoalId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, subGoalId])
+}
+
+// ============================================
+// ASSESSMENT (BEDOMNING)
+// ============================================
+
+model Assessment {
+  id                String    @id @default(uuid())
+  traineeProfileId  String
+  traineeProfile    TraineeProfile @relation(fields: [traineeProfileId], references: [id], onDelete: Cascade)
+  type              String    // DOPS, MINI_CEX, CBD, ANNAT
+  date              DateTime
+  context           String?
+  assessorId        String?
+  assessor          User?     @relation("Assessor", fields: [assessorId], references: [id])
+  rating            Int?      // 1-5
+  narrativeFeedback String?
+  signedAt          DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  assessmentSubGoals AssessmentSubGoal[]
+
+  @@index([traineeProfileId])
+  @@index([assessorId])
+  @@index([signedAt])
+}
+
+model AssessmentSubGoal {
+  id           String     @id @default(uuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  subGoalId    String
+  subGoal      SubGoal    @relation(fields: [subGoalId], references: [id], onDelete: Cascade)
+
+  @@unique([assessmentId, subGoalId])
+}
+
+// ============================================
+// SUPERVISION MEETING (HANDLEDARSAMTAL)
+// ============================================
+
+model SupervisionMeeting {
+  id               String    @id @default(uuid())
+  traineeProfileId String
+  traineeProfile   TraineeProfile @relation(fields: [traineeProfileId], references: [id], onDelete: Cascade)
+  date             DateTime
+  notes            String?
+  agreedActions    String?
+  supervisorId     String?
+  supervisor       User?     @relation("SupervisorMeeting", fields: [supervisorId], references: [id])
+  signedAt         DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([traineeProfileId])
+  @@index([supervisorId])
+}
+
+// ============================================
+// CERTIFICATE (INTYG)
+// ============================================
+
+model Certificate {
+  id               String    @id @default(uuid())
+  traineeProfileId String
+  traineeProfile   TraineeProfile @relation(fields: [traineeProfileId], references: [id], onDelete: Cascade)
+  type             String    // TJANSTGORNINGSINTYG, KURSINTYG, KOMPETENSBEVIS, HANDLEDARINTYG, OVRIGT
+  title            String?
+  issueDate        DateTime?
+  issuer           String?
+  filePath         String
+  fileName         String
+  mimeType         String
+  fileSize         Int
+  ocrText          String?
+  ocrProcessedAt   DateTime?
+  parsedFields     String?   // JSON string
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Relations
+  certificateSubGoals CertificateSubGoal[]
+
+  @@index([traineeProfileId])
+  @@index([type])
+}
+
+model CertificateSubGoal {
+  id            String      @id @default(uuid())
+  certificateId String
+  certificate   Certificate @relation(fields: [certificateId], references: [id], onDelete: Cascade)
+  subGoalId     String
+  subGoal       SubGoal     @relation(fields: [subGoalId], references: [id], onDelete: Cascade)
+
+  @@unique([certificateId, subGoalId])
+}
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // DEADLINE_REMINDER, UNSIGNED_ASSESSMENT, SUPERVISION_REMINDER, SUBGOAL_SIGNED, ASSESSMENT_SIGNED, GENERAL
+  title     String
+  message   String
+  link      String?  // Optional link to navigate to
+  read      Boolean  @default(false)
+  readAt    DateTime?
+  emailSent Boolean  @default(false)
+  emailSentAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+}
+
+model NotificationPreference {
+  id                    String  @id @default(uuid())
+  userId                String  @unique
+  user                  User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailEnabled          Boolean @default(true)
+  deadlineReminders     Boolean @default(true)
+  unsignedAssessments   Boolean @default(true)
+  supervisionReminders  Boolean @default(true)
+  subGoalSigned         Boolean @default(true)
+  assessmentSigned      Boolean @default(true)
+  daysBeforeDeadline    Int     @default(30) // Days before deadline to send reminder
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// ============================================
+// AUDIT LOG
+// ============================================
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  action     String   // CREATE, UPDATE, DELETE, SIGN
+  entityType String   // User, Rotation, Assessment, etc.
+  entityId   String
+  oldValue   String?  // JSON string
+  newValue   String?  // JSON string
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
