@@ -1,6 +1,9 @@
 # Optimized for low memory environments (Railway free tier)
 FROM node:20-alpine AS builder
 
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl
+
 WORKDIR /app
 
 # Copy all package files first
@@ -52,9 +55,9 @@ RUN npx vite build
 WORKDIR /app/apps/api
 RUN npx tsc
 
-# Run initial migration to create database schema in builder
+# Create database with schema in builder
 ENV DATABASE_URL=file:/app/data/saga.db
-RUN mkdir -p /app/data && npx prisma migrate deploy
+RUN mkdir -p /app/data && npx prisma db push --skip-generate
 
 # Production stage
 FROM node:20-alpine AS production
