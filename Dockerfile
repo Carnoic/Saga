@@ -20,7 +20,7 @@ COPY packages/shared/tsconfig.json ./packages/shared/
 RUN sed -i 's/"@saga\/shared": "workspace:\*"/"@saga\/shared": "file:..\/..\/packages\/shared"/g' apps/api/package.json && \
     sed -i 's/"@saga\/shared": "workspace:\*"/"@saga\/shared": "file:..\/..\/packages\/shared"/g' apps/web/package.json
 
-# Install dependencies
+# Install ALL dependencies (including devDependencies for build)
 RUN npm install --legacy-peer-deps
 
 # Copy source code
@@ -32,10 +32,11 @@ COPY apps/web/index.html ./apps/web/
 COPY apps/web/vite.config.ts ./apps/web/
 COPY apps/web/postcss.config.js ./apps/web/
 COPY apps/web/tailwind.config.js ./apps/web/
+COPY apps/web/public ./apps/web/public
 
-# Build shared package
+# Build shared package using npx
 WORKDIR /app/packages/shared
-RUN npm run build
+RUN npx tsc
 
 # Generate Prisma client
 WORKDIR /app/apps/api
@@ -44,30 +45,32 @@ RUN npx prisma generate
 # Build frontend with limited memory
 WORKDIR /app/apps/web
 ENV NODE_OPTIONS="--max-old-space-size=512"
-RUN npm run build
+RUN npx vite build
 
 # Build backend
 WORKDIR /app/apps/api
-RUN npm run build
+RUN npx tsc
 
 # Production stage
 FROM node:20-alpine AS production
 
 WORKDIR /app
 
-# Copy package files
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/apps/api/package.json ./apps/api/
-COPY --from=builder /app/packages/shared/package.json ./packages/shared/
+# Install only production dependencies
+COPY package.json ./
+COPY apps/api/package.json ./apps/api/
+COPY packages/shared/package.json ./packages/shared/
 
-# Copy node_modules
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
+# Fix workspace references
+RUN sed -i 's/"@saga\/shared": "workspace:\*"/"@saga\/shared": "file:..\/..\/packages\/shared"/g' apps/api/package.json
+
+RUN npm install --omit=dev --legacy-peer-deps
 
 # Copy built files
 COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
+COPY --from=builder /app/apps/api/node_modules/.prisma ./apps/api/node_modules/.prisma
 COPY --from=builder /app/apps/web/dist ./apps/web/dist
 
 # Create directories
