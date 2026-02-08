@@ -34,22 +34,22 @@ COPY apps/web/postcss.config.js ./apps/web/
 COPY apps/web/tailwind.config.js ./apps/web/
 COPY apps/web/public ./apps/web/public
 
-# Build shared package using npx
+# Build shared package
 WORKDIR /app/packages/shared
-RUN npx tsc
+RUN ./node_modules/.bin/tsc || ../node_modules/.bin/tsc || ../../node_modules/.bin/tsc
 
 # Generate Prisma client
 WORKDIR /app/apps/api
-RUN npx prisma generate
+RUN ./node_modules/.bin/prisma generate || ../node_modules/.bin/prisma generate || ../../node_modules/.bin/prisma generate
 
 # Build frontend with limited memory
 WORKDIR /app/apps/web
 ENV NODE_OPTIONS="--max-old-space-size=512"
-RUN npx vite build
+RUN ./node_modules/.bin/vite build || ../node_modules/.bin/vite build || ../../node_modules/.bin/vite build
 
 # Build backend
 WORKDIR /app/apps/api
-RUN npx tsc
+RUN ./node_modules/.bin/tsc || ../node_modules/.bin/tsc || ../../node_modules/.bin/tsc
 
 # Production stage
 FROM node:20-alpine AS production
@@ -86,4 +86,4 @@ ENV DATABASE_URL=file:/app/data/saga.db
 EXPOSE 3000
 
 WORKDIR /app/apps/api
-CMD npx prisma migrate deploy && node dist/index.js
+CMD ./node_modules/.bin/prisma migrate deploy && node dist/index.js
