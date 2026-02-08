@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import { prisma } from './db';
+import { prisma } from './db.js';
 
 // Email configuration - defaults to console logging in development
 const SMTP_HOST = process.env.SMTP_HOST || '';

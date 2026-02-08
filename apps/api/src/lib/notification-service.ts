@@ -1,4 +1,4 @@
-import { prisma } from './db';
+import { prisma } from './db.js';
 import { NotificationType } from '@saga/shared';
 import {
   createNotification,
@@ -7,7 +7,7 @@ import {
   notifyRotationEnding,
   notifyDeadlineReminder,
   notifyUnsignedAssessment,
-} from '../routes/notifications';
+} from '../routes/notifications.js';
 
 // Default reminder intervals
 const SUPERVISION_REMINDER_DAYS = 90; // Remind if no supervision in 90 days
