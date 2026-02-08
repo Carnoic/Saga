@@ -52,6 +52,10 @@ RUN npx vite build
 WORKDIR /app/apps/api
 RUN npx tsc
 
+# Run initial migration to create database schema in builder
+ENV DATABASE_URL=file:/app/data/saga.db
+RUN mkdir -p /app/data && npx prisma migrate deploy
+
 # Production stage
 FROM node:20-alpine AS production
 
@@ -77,6 +81,9 @@ COPY --from=builder /app/apps/web/dist ./apps/web/dist
 # Copy Prisma client (may be in root node_modules with workspaces)
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
+# Copy initialized database from builder
+COPY --from=builder /app/data ./data
+
 # Create directories for data
 RUN mkdir -p /app/storage /app/data
 
@@ -90,4 +97,4 @@ ENV DATABASE_URL=file:/app/data/saga.db
 EXPOSE 3000
 
 WORKDIR /app/apps/api
-CMD npx prisma migrate deploy && node dist/index.js
+CMD ["node", "dist/index.js"]
