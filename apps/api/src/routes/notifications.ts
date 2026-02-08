@@ -1,16 +1,16 @@
-import { FastifyInstance, FastifyRequest } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/db.js';
 import { authenticate } from '../lib/auth.js';
 import { NotificationType, NotificationPreferenceUpdateInput } from '@saga/shared';
 
 export async function notificationRoutes(fastify: FastifyInstance) {
   // Get all notifications for current user
-  fastify.get(
+  fastify.get<{
+    Querystring: { unreadOnly?: string; limit?: string; offset?: string };
+  }>(
     '/',
     { preHandler: authenticate },
-    async (request: FastifyRequest<{
-      Querystring: { unreadOnly?: string; limit?: string; offset?: string };
-    }>) => {
+    async (request) => {
       const userId = request.user!.id;
       const unreadOnly = request.query.unreadOnly === 'true';
       const limit = parseInt(request.query.limit || '50', 10);
@@ -46,7 +46,7 @@ export async function notificationRoutes(fastify: FastifyInstance) {
   fastify.get(
     '/unread-count',
     { preHandler: authenticate },
-    async (request: FastifyRequest) => {
+    async (request) => {
       const userId = request.user!.id;
       const count = await prisma.notification.count({
         where: { userId, read: false },
@@ -56,10 +56,10 @@ export async function notificationRoutes(fastify: FastifyInstance) {
   );
 
   // Mark notification as read
-  fastify.patch(
+  fastify.patch<{ Params: { id: string } }>(
     '/:id/read',
     { preHandler: authenticate },
-    async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
+    async (request, reply) => {
       const userId = request.user!.id;
       const { id } = request.params;
 
@@ -84,7 +84,7 @@ export async function notificationRoutes(fastify: FastifyInstance) {
   fastify.patch(
     '/read-all',
     { preHandler: authenticate },
-    async (request: FastifyRequest) => {
+    async (request) => {
       const userId = request.user!.id;
 
       await prisma.notification.updateMany({
@@ -97,10 +97,10 @@ export async function notificationRoutes(fastify: FastifyInstance) {
   );
 
   // Delete a notification
-  fastify.delete(
+  fastify.delete<{ Params: { id: string } }>(
     '/:id',
     { preHandler: authenticate },
-    async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
+    async (request, reply) => {
       const userId = request.user!.id;
       const { id } = request.params;
 
@@ -122,7 +122,7 @@ export async function notificationRoutes(fastify: FastifyInstance) {
   fastify.delete(
     '/read',
     { preHandler: authenticate },
-    async (request: FastifyRequest) => {
+    async (request) => {
       const userId = request.user!.id;
 
       await prisma.notification.deleteMany({
@@ -137,7 +137,7 @@ export async function notificationRoutes(fastify: FastifyInstance) {
   fastify.get(
     '/preferences',
     { preHandler: authenticate },
-    async (request: FastifyRequest) => {
+    async (request) => {
       const userId = request.user!.id;
 
       let preferences = await prisma.notificationPreference.findUnique({
@@ -156,10 +156,10 @@ export async function notificationRoutes(fastify: FastifyInstance) {
   );
 
   // Update notification preferences
-  fastify.patch(
+  fastify.patch<{ Body: NotificationPreferenceUpdateInput }>(
     '/preferences',
     { preHandler: authenticate },
-    async (request: FastifyRequest<{ Body: NotificationPreferenceUpdateInput }>) => {
+    async (request) => {
       const userId = request.user!.id;
       const data = request.body;
 
