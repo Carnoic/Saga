@@ -72,8 +72,10 @@ RUN npm install --omit=dev --legacy-peer-deps
 COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
-COPY --from=builder /app/apps/api/node_modules/.prisma ./apps/api/node_modules/.prisma
 COPY --from=builder /app/apps/web/dist ./apps/web/dist
+
+# Copy Prisma client (may be in root node_modules with workspaces)
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Create directories for data
 RUN mkdir -p /app/storage /app/data
