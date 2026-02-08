@@ -55,9 +55,9 @@ RUN npx vite build
 WORKDIR /app/apps/api
 RUN npx tsc
 
-# Create database with schema in builder
+# Create database with schema and seed data in builder
 ENV DATABASE_URL=file:/app/data/saga.db
-RUN mkdir -p /app/data && npx prisma db push --skip-generate
+RUN mkdir -p /app/data && npx prisma db push --skip-generate && npx tsx prisma/seed.ts
 
 # Production stage
 FROM node:20-alpine AS production
