@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "ST/BT Planerings- och Dokumentationssystem",
   "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "scripts": {
     "dev": "pnpm -r --parallel dev",
     "dev:api": "pnpm --filter @saga/api dev",
