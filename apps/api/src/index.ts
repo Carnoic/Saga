@@ -32,7 +32,7 @@ const PORT = parseInt(process.env.PORT || '3001', 10);
 const HOST = process.env.HOST || '0.0.0.0';
 const STORAGE_PATH = process.env.STORAGE_PATH || './storage';
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
-const FRONTEND_PATH = join(__dirname, '..', '..', '..', 'web', 'dist');
+const FRONTEND_PATH = join(__dirname, '..', '..', 'web', 'dist');
 
 // Ensure storage directory exists
 if (!existsSync(STORAGE_PATH)) {
