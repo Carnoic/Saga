@@ -58,6 +58,75 @@ export async function userRoutes(fastify: FastifyInstance) {
     return { users };
   });
 
+  // Create user (admin/studierektor only)
+  fastify.post('/', {
+    schema: {
+      tags: ['Users'],
+      summary: 'Skapa ny användare',
+      body: {
+        type: 'object',
+        required: ['email', 'password', 'name', 'role'],
+        properties: {
+          email: { type: 'string', format: 'email' },
+          password: { type: 'string', minLength: 6 },
+          name: { type: 'string', minLength: 2 },
+          role: { type: 'string', enum: ['HANDLEDARE', 'STUDIEREKTOR'] },
+        },
+      },
+    },
+    preHandler: requireRole(UserRole.ADMIN, UserRole.STUDIEREKTOR),
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const currentUser = request.user!;
+    const { email, password, name, role } = request.body as {
+      email: string;
+      password: string;
+      name: string;
+      role: 'HANDLEDARE' | 'STUDIEREKTOR';
+    };
+
+    // Studierektor can only create HANDLEDARE in their own clinic
+    if (currentUser.role === UserRole.STUDIEREKTOR) {
+      if (role !== 'HANDLEDARE') {
+        return reply.status(403).send({ error: 'Du kan bara skapa handledare' });
+      }
+    }
+
+    // Check if email already exists
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return reply.status(409).send({ error: 'E-postadressen är redan registrerad' });
+    }
+
+    const hashedPassword = await hashPassword(password);
+
+    const user = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        name,
+        role,
+        clinicId: currentUser.clinicId, // Same clinic as creator
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        clinicId: true,
+      },
+    });
+
+    await createAuditLog({
+      userId: currentUser.id,
+      action: 'CREATE',
+      entityType: 'User',
+      entityId: user.id,
+      newValue: { email, name, role },
+    }, request);
+
+    return { user };
+  });
+
   // Get user by ID
   fastify.get('/:id', {
     schema: {

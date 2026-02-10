@@ -9,7 +9,7 @@ import { sv } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 
-type Tab = 'overview' | 'feedback';
+type Tab = 'overview' | 'staff' | 'feedback';
 
 interface FeedbackStatistics {
   totalResponses: number;
@@ -79,6 +79,18 @@ const initialTraineeForm: NewTraineeForm = {
   supervisorId: '',
 };
 
+interface NewHandledareForm {
+  email: string;
+  password: string;
+  name: string;
+}
+
+const initialHandledareForm: NewHandledareForm = {
+  email: '',
+  password: '',
+  name: '',
+};
+
 export default function StudyDirectorPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -86,6 +98,8 @@ export default function StudyDirectorPage() {
   const [selectedUnit, setSelectedUnit] = useState<string>('');
   const [showNewTraineeForm, setShowNewTraineeForm] = useState(false);
   const [traineeForm, setTraineeForm] = useState<NewTraineeForm>(initialTraineeForm);
+  const [showNewHandledareForm, setShowNewHandledareForm] = useState(false);
+  const [handledareForm, setHandledareForm] = useState<NewHandledareForm>(initialHandledareForm);
 
   const { data, isLoading } = useQuery({
     queryKey: ['studierektor', 'overview'],
@@ -105,13 +119,21 @@ export default function StudyDirectorPage() {
     enabled: activeTab === 'feedback',
   });
 
-  // Fetch supervisors (handledare) for the form
+  // Fetch supervisors (handledare) for the form and staff tab
   const { data: supervisorsData } = useQuery({
     queryKey: ['supervisors'],
     queryFn: () => api.get('/api/users/supervisors'),
-    enabled: showNewTraineeForm,
+    enabled: showNewTraineeForm || activeTab === 'staff',
   });
   const supervisors = supervisorsData?.supervisors || [];
+
+  // Fetch all handledare for staff tab
+  const { data: handledarData } = useQuery({
+    queryKey: ['handledare'],
+    queryFn: () => api.get('/api/users?role=HANDLEDARE'),
+    enabled: activeTab === 'staff',
+  });
+  const handledare = handledarData?.users || [];
 
   const createTraineeMutation = useMutation({
     mutationFn: (data: NewTraineeForm) => api.post('/api/trainees', {
@@ -136,6 +158,32 @@ export default function StudyDirectorPage() {
       return;
     }
     createTraineeMutation.mutate(traineeForm);
+  };
+
+  const createHandledareMutation = useMutation({
+    mutationFn: (data: NewHandledareForm) => api.post('/api/users', {
+      ...data,
+      role: 'HANDLEDARE',
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['handledare'] });
+      queryClient.invalidateQueries({ queryKey: ['supervisors'] });
+      toast.success('Handledare skapad');
+      setShowNewHandledareForm(false);
+      setHandledareForm(initialHandledareForm);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Kunde inte skapa handledare');
+    },
+  });
+
+  const handleCreateHandledare = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!handledareForm.email || !handledareForm.password || !handledareForm.name) {
+      toast.error('Fyll i alla obligatoriska fält');
+      return;
+    }
+    createHandledareMutation.mutate(handledareForm);
   };
 
   const overview = data?.overview;
@@ -172,15 +220,28 @@ export default function StudyDirectorPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Studierektoröversikt</h1>
-          <p className="text-gray-500">Alla ST/BT-läkare på kliniken</p>
+          <p className="text-gray-500">Hantera ST/BT-läkare och personal på kliniken</p>
         </div>
-        <button
-          onClick={() => setShowNewTraineeForm(true)}
-          className="btn-primary"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Ny ST/BT-läkare
-        </button>
+        <div className="flex gap-2">
+          {activeTab === 'overview' && (
+            <button
+              onClick={() => setShowNewTraineeForm(true)}
+              className="btn-primary"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Ny ST/BT-läkare
+            </button>
+          )}
+          {activeTab === 'staff' && (
+            <button
+              onClick={() => setShowNewHandledareForm(true)}
+              className="btn-primary"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Ny handledare
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}
@@ -196,6 +257,17 @@ export default function StudyDirectorPage() {
           >
             <Users className="w-4 h-4 inline mr-2" />
             ST/BT-läkare
+          </button>
+          <button
+            onClick={() => setActiveTab('staff')}
+            className={`px-4 py-2 font-medium text-sm border-b-2 -mb-px transition-colors ${
+              activeTab === 'staff'
+                ? 'border-primary-500 text-primary-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <Users className="w-4 h-4 inline mr-2" />
+            Handledare
           </button>
           <button
             onClick={() => setActiveTab('feedback')}
@@ -351,6 +423,51 @@ export default function StudyDirectorPage() {
             </div>
           </div>
         </>
+      )}
+
+      {activeTab === 'staff' && (
+        <div className="card overflow-hidden">
+          <div className="p-4 border-b border-gray-200">
+            <h2 className="font-semibold text-gray-900">Handledare på kliniken</h2>
+            <p className="text-sm text-gray-500">Hantera handledare som kan signera bedömningar och handledarsamtal</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Namn</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">E-post</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Roll</th>
+                  <th className="px-4 py-3 text-center text-sm font-medium text-gray-500">Skapad</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {handledare.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                      Inga handledare på kliniken. Klicka "Ny handledare" för att lägga till.
+                    </td>
+                  </tr>
+                ) : (
+                  handledare.map((h: any) => (
+                    <tr key={h.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-gray-900">{h.name}</p>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{h.email}</td>
+                      <td className="px-4 py-3">
+                        <span className="badge-primary">Handledare</span>
+                      </td>
+                      <td className="px-4 py-3 text-center text-sm text-gray-500">
+                        {h.createdAt ? format(new Date(h.createdAt), 'd MMM yyyy', { locale: sv }) : '-'}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
 
       {activeTab === 'feedback' && (
@@ -653,6 +770,75 @@ export default function StudyDirectorPage() {
                   className="btn-primary flex-1"
                 >
                   {createTraineeMutation.isPending ? 'Skapar...' : 'Skapa'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* New handledare modal */}
+      {showNewHandledareForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-md w-full">
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Ny handledare</h2>
+              <button onClick={() => setShowNewHandledareForm(false)} className="text-gray-500">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleCreateHandledare} className="p-4 space-y-4">
+              <div>
+                <label className="label">Namn *</label>
+                <input
+                  type="text"
+                  className="input"
+                  value={handledareForm.name}
+                  onChange={(e) => setHandledareForm({ ...handledareForm, name: e.target.value })}
+                  placeholder="För- och efternamn"
+                  required
+                />
+              </div>
+              <div>
+                <label className="label">E-post *</label>
+                <input
+                  type="email"
+                  className="input"
+                  value={handledareForm.email}
+                  onChange={(e) => setHandledareForm({ ...handledareForm, email: e.target.value })}
+                  placeholder="e-post@example.com"
+                  required
+                />
+              </div>
+              <div>
+                <label className="label">Lösenord *</label>
+                <input
+                  type="password"
+                  className="input"
+                  value={handledareForm.password}
+                  onChange={(e) => setHandledareForm({ ...handledareForm, password: e.target.value })}
+                  placeholder="Minst 6 tecken"
+                  minLength={6}
+                  required
+                />
+              </div>
+              <div className="flex gap-2 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowNewHandledareForm(false);
+                    setHandledareForm(initialHandledareForm);
+                  }}
+                  className="btn-secondary flex-1"
+                >
+                  Avbryt
+                </button>
+                <button
+                  type="submit"
+                  disabled={createHandledareMutation.isPending}
+                  className="btn-primary flex-1"
+                >
+                  {createHandledareMutation.isPending ? 'Skapar...' : 'Skapa'}
                 </button>
               </div>
             </form>
