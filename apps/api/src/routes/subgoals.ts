@@ -185,7 +185,7 @@ export async function subGoalRoutes(fastify: FastifyInstance) {
       return reply.status(404).send({ error: 'Delmålsprogression hittades inte' });
     }
 
-    if (!(await canWriteTrainee(user.id, user.role, oldProgress.traineeProfileId))) {
+    if (!(await canWriteTrainee(user.id, user.role, user.clinicId, oldProgress.traineeProfileId))) {
       return reply.status(403).send({ error: 'Behörighet saknas' });
     }
 

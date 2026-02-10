@@ -288,6 +288,44 @@ export async function traineeRoutes(fastify: FastifyInstance) {
     return { profile };
   });
 
+  // Get supervised trainees (for supervisors)
+  fastify.get('/supervised', {
+    schema: {
+      tags: ['Trainees'],
+      summary: 'Hämta ST/BT-läkare som handledaren handleder',
+    },
+    preHandler: requireRole(UserRole.HANDLEDARE, UserRole.STUDIEREKTOR, UserRole.ADMIN),
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const user = request.user!;
+
+    const where: Record<string, unknown> = {};
+
+    if (user.role === UserRole.HANDLEDARE) {
+      where.supervisorId = user.id;
+    } else if (user.role === UserRole.STUDIEREKTOR) {
+      where.clinicId = user.clinicId;
+    }
+    // ADMIN sees all
+
+    const traineeProfiles = await prisma.traineeProfile.findMany({
+      where,
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: { user: { name: 'asc' } },
+    });
+
+    // Format for frontend
+    const trainees = traineeProfiles.map((t) => ({
+      traineeId: t.id,
+      traineeName: t.user.name,
+      traineeEmail: t.user.email,
+      trackType: t.trackType,
+    }));
+
+    return { trainees };
+  });
+
   // Get trainee by user ID (for logged-in user)
   fastify.get('/my-profile', {
     schema: {

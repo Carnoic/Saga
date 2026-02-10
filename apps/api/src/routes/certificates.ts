@@ -147,7 +147,7 @@ export async function certificateRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'traineeProfileId krävs' });
     }
 
-    if (!(await canWriteTrainee(user.id, user.role, traineeProfileId))) {
+    if (!(await canWriteTrainee(user.id, user.role, user.clinicId, traineeProfileId))) {
       return reply.status(403).send({ error: 'Behörighet saknas' });
     }
 
@@ -256,7 +256,7 @@ export async function certificateRoutes(fastify: FastifyInstance) {
       return reply.status(404).send({ error: 'Intyg hittades inte' });
     }
 
-    if (!(await canWriteTrainee(user.id, user.role, oldCertificate.traineeProfileId))) {
+    if (!(await canWriteTrainee(user.id, user.role, user.clinicId, oldCertificate.traineeProfileId))) {
       return reply.status(403).send({ error: 'Behörighet saknas' });
     }
 
@@ -322,7 +322,7 @@ export async function certificateRoutes(fastify: FastifyInstance) {
       return reply.status(404).send({ error: 'Intyg hittades inte' });
     }
 
-    if (!(await canWriteTrainee(user.id, user.role, certificate.traineeProfileId))) {
+    if (!(await canWriteTrainee(user.id, user.role, user.clinicId, certificate.traineeProfileId))) {
       return reply.status(403).send({ error: 'Behörighet saknas' });
     }
 
@@ -367,7 +367,7 @@ export async function certificateRoutes(fastify: FastifyInstance) {
       return reply.status(404).send({ error: 'Intyg hittades inte' });
     }
 
-    if (!(await canWriteTrainee(user.id, user.role, certificate.traineeProfileId))) {
+    if (!(await canWriteTrainee(user.id, user.role, user.clinicId, certificate.traineeProfileId))) {
       return reply.status(403).send({ error: 'Behörighet saknas' });
     }
 

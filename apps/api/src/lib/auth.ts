@@ -168,6 +168,7 @@ export async function canAccessTrainee(
 export async function canWriteTrainee(
   userId: string,
   userRole: UserRole,
+  userClinicId: string | null | undefined,
   traineeProfileId: string
 ): Promise<boolean> {
   // Admin can write all
@@ -175,7 +176,7 @@ export async function canWriteTrainee(
 
   const traineeProfile = await prisma.traineeProfile.findUnique({
     where: { id: traineeProfileId },
-    select: { userId: true, supervisorId: true },
+    select: { userId: true, clinicId: true, supervisorId: true },
   });
 
   if (!traineeProfile) return false;
@@ -185,6 +186,9 @@ export async function canWriteTrainee(
 
   // Supervisor can write for assigned trainees (for signing etc)
   if (userRole === UserRole.HANDLEDARE && traineeProfile.supervisorId === userId) return true;
+
+  // Study director can write for trainees in their clinic
+  if (userRole === UserRole.STUDIEREKTOR && traineeProfile.clinicId === userClinicId) return true;
 
   return false;
 }

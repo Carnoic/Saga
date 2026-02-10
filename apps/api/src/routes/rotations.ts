@@ -147,7 +147,7 @@ export async function rotationRoutes(fastify: FastifyInstance) {
     const { traineeProfileId, unit, specialtyArea, startDate, endDate, planned, supervisorName, notes, subGoalIds } = parsed.data;
     const user = request.user!;
 
-    if (!(await canWriteTrainee(user.id, user.role, traineeProfileId))) {
+    if (!(await canWriteTrainee(user.id, user.role, user.clinicId, traineeProfileId))) {
       return reply.status(403).send({ error: 'Behörighet saknas' });
     }
 
@@ -268,7 +268,7 @@ export async function rotationRoutes(fastify: FastifyInstance) {
       return reply.status(404).send({ error: 'Placering hittades inte' });
     }
 
-    if (!(await canWriteTrainee(user.id, user.role, oldRotation.traineeProfileId))) {
+    if (!(await canWriteTrainee(user.id, user.role, user.clinicId, oldRotation.traineeProfileId))) {
       return reply.status(403).send({ error: 'Behörighet saknas' });
     }
 
@@ -361,7 +361,7 @@ export async function rotationRoutes(fastify: FastifyInstance) {
       return reply.status(404).send({ error: 'Placering hittades inte' });
     }
 
-    if (!(await canWriteTrainee(user.id, user.role, rotation.traineeProfileId))) {
+    if (!(await canWriteTrainee(user.id, user.role, user.clinicId, rotation.traineeProfileId))) {
       return reply.status(403).send({ error: 'Behörighet saknas' });
     }
 

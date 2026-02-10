@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import { RiskLevel, RISK_LEVEL_LABELS, formatDateSv } from '@saga/shared';
-import { Users, AlertTriangle, TrendingUp, Eye, MessageSquare, Star, BarChart3 } from 'lucide-react';
+import { RiskLevel, RISK_LEVEL_LABELS, formatDateSv, TrackType } from '@saga/shared';
+import { Users, AlertTriangle, TrendingUp, Eye, MessageSquare, Star, BarChart3, Plus, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
+import toast from 'react-hot-toast';
+import { useAuth } from '../contexts/AuthContext';
 
 type Tab = 'overview' | 'feedback';
 
@@ -55,9 +57,35 @@ function StarDisplay({ rating }: { rating: number }) {
   );
 }
 
+interface NewTraineeForm {
+  email: string;
+  password: string;
+  name: string;
+  trackType: 'ST' | 'BT';
+  specialty: string;
+  startDate: string;
+  plannedEndDate: string;
+  supervisorId: string;
+}
+
+const initialTraineeForm: NewTraineeForm = {
+  email: '',
+  password: '',
+  name: '',
+  trackType: 'ST',
+  specialty: '',
+  startDate: new Date().toISOString().split('T')[0],
+  plannedEndDate: new Date(Date.now() + 5 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+  supervisorId: '',
+};
+
 export default function StudyDirectorPage() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [selectedUnit, setSelectedUnit] = useState<string>('');
+  const [showNewTraineeForm, setShowNewTraineeForm] = useState(false);
+  const [traineeForm, setTraineeForm] = useState<NewTraineeForm>(initialTraineeForm);
 
   const { data, isLoading } = useQuery({
     queryKey: ['studierektor', 'overview'],
@@ -76,6 +104,39 @@ export default function StudyDirectorPage() {
       api.get<FeedbackEntry[]>(`/api/feedback/unit${selectedUnit ? `?unit=${encodeURIComponent(selectedUnit)}` : ''}`),
     enabled: activeTab === 'feedback',
   });
+
+  // Fetch supervisors (handledare) for the form
+  const { data: supervisorsData } = useQuery({
+    queryKey: ['supervisors'],
+    queryFn: () => api.get('/api/users/supervisors'),
+    enabled: showNewTraineeForm,
+  });
+  const supervisors = supervisorsData?.supervisors || [];
+
+  const createTraineeMutation = useMutation({
+    mutationFn: (data: NewTraineeForm) => api.post('/api/trainees', {
+      ...data,
+      clinicId: user?.clinicId,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['studierektor'] });
+      toast.success('ST/BT-läkare skapad');
+      setShowNewTraineeForm(false);
+      setTraineeForm(initialTraineeForm);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Kunde inte skapa ST/BT-läkare');
+    },
+  });
+
+  const handleCreateTrainee = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!traineeForm.email || !traineeForm.password || !traineeForm.name) {
+      toast.error('Fyll i alla obligatoriska fält');
+      return;
+    }
+    createTraineeMutation.mutate(traineeForm);
+  };
 
   const overview = data?.overview;
   const trainees = overview?.trainees || [];
@@ -108,9 +169,18 @@ export default function StudyDirectorPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Studierektoröversikt</h1>
-        <p className="text-gray-500">Alla ST/BT-läkare på kliniken</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Studierektoröversikt</h1>
+          <p className="text-gray-500">Alla ST/BT-läkare på kliniken</p>
+        </div>
+        <button
+          onClick={() => setShowNewTraineeForm(true)}
+          className="btn-primary"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Ny ST/BT-läkare
+        </button>
       </div>
 
       {/* Tabs */}
@@ -463,6 +533,131 @@ export default function StudyDirectorPage() {
             </div>
           </div>
         </>
+      )}
+
+      {/* New trainee modal */}
+      {showNewTraineeForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Ny ST/BT-läkare</h2>
+              <button onClick={() => setShowNewTraineeForm(false)} className="text-gray-500">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleCreateTrainee} className="p-4 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="label">Namn *</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={traineeForm.name}
+                    onChange={(e) => setTraineeForm({ ...traineeForm, name: e.target.value })}
+                    placeholder="För- och efternamn"
+                    required
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="label">E-post *</label>
+                  <input
+                    type="email"
+                    className="input"
+                    value={traineeForm.email}
+                    onChange={(e) => setTraineeForm({ ...traineeForm, email: e.target.value })}
+                    placeholder="e-post@example.com"
+                    required
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="label">Lösenord *</label>
+                  <input
+                    type="password"
+                    className="input"
+                    value={traineeForm.password}
+                    onChange={(e) => setTraineeForm({ ...traineeForm, password: e.target.value })}
+                    placeholder="Minst 6 tecken"
+                    minLength={6}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="label">Utbildningstyp *</label>
+                  <select
+                    className="input"
+                    value={traineeForm.trackType}
+                    onChange={(e) => setTraineeForm({ ...traineeForm, trackType: e.target.value as 'ST' | 'BT' })}
+                  >
+                    <option value="ST">ST-läkare</option>
+                    <option value="BT">BT-läkare</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Specialitet</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={traineeForm.specialty}
+                    onChange={(e) => setTraineeForm({ ...traineeForm, specialty: e.target.value })}
+                    placeholder="t.ex. Allmänmedicin"
+                  />
+                </div>
+                <div>
+                  <label className="label">Startdatum *</label>
+                  <input
+                    type="date"
+                    className="input"
+                    value={traineeForm.startDate}
+                    onChange={(e) => setTraineeForm({ ...traineeForm, startDate: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="label">Planerat slutdatum *</label>
+                  <input
+                    type="date"
+                    className="input"
+                    value={traineeForm.plannedEndDate}
+                    onChange={(e) => setTraineeForm({ ...traineeForm, plannedEndDate: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="label">Handledare</label>
+                  <select
+                    className="input"
+                    value={traineeForm.supervisorId}
+                    onChange={(e) => setTraineeForm({ ...traineeForm, supervisorId: e.target.value })}
+                  >
+                    <option value="">Välj handledare (valfritt)</option>
+                    {supervisors.map((s: any) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-2 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowNewTraineeForm(false);
+                    setTraineeForm(initialTraineeForm);
+                  }}
+                  className="btn-secondary flex-1"
+                >
+                  Avbryt
+                </button>
+                <button
+                  type="submit"
+                  disabled={createTraineeMutation.isPending}
+                  className="btn-primary flex-1"
+                >
+                  {createTraineeMutation.isPending ? 'Skapar...' : 'Skapa'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

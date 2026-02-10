@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../lib/api';
@@ -6,17 +6,50 @@ import { formatDateSv, UserRole } from '@saga/shared';
 import { Users, Plus, Trash2, CheckCircle, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+interface Trainee {
+  traineeId: string;
+  traineeName: string;
+  traineeEmail: string;
+  trackType: string;
+}
+
 export default function SupervisionPage() {
   const { user, traineeProfile } = useAuth();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [selectedTraineeId, setSelectedTraineeId] = useState<string | null>(null);
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
     notes: '',
     agreedActions: '',
   });
 
-  const profileId = traineeProfile?.id;
+  const isTrainee = user?.role === UserRole.ST_BT;
+  const isSupervisor = user?.role === UserRole.HANDLEDARE;
+  const isStudierektor = user?.role === UserRole.STUDIEREKTOR || user?.role === UserRole.ADMIN;
+
+  // For trainees, use their own profile ID
+  // For supervisors/studierektorer, use selected trainee
+  const profileId = isTrainee ? traineeProfile?.id : selectedTraineeId;
+
+  // Fetch trainees for supervisors/studierektorer
+  const { data: traineesData } = useQuery({
+    queryKey: ['supervised-trainees'],
+    queryFn: async () => {
+      const res = await api.get('/api/trainees/supervised');
+      return res.trainees || [];
+    },
+    enabled: !isTrainee,
+  });
+
+  const trainees: Trainee[] = traineesData || [];
+
+  // Auto-select first trainee if none selected
+  useEffect(() => {
+    if (!isTrainee && trainees.length > 0 && !selectedTraineeId) {
+      setSelectedTraineeId(trainees[0].traineeId);
+    }
+  }, [isTrainee, trainees, selectedTraineeId]);
 
   const { data, isLoading } = useQuery({
     queryKey: ['supervision', profileId],
@@ -59,11 +92,16 @@ export default function SupervisionPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!profileId) {
+      toast.error('Välj en ST/BT-läkare först');
+      return;
+    }
     createMutation.mutate(form);
   };
 
   const meetings = data?.meetings || [];
-  const canSign = user?.role === UserRole.HANDLEDARE || user?.role === UserRole.STUDIEREKTOR;
+  const canSign = user?.role === UserRole.HANDLEDARE || user?.role === UserRole.STUDIEREKTOR || user?.role === UserRole.ADMIN;
+  const selectedTrainee = trainees.find(t => t.traineeId === selectedTraineeId);
 
   return (
     <div className="space-y-6">
@@ -72,13 +110,59 @@ export default function SupervisionPage() {
           <h1 className="text-2xl font-bold text-gray-900">Handledarsamtal</h1>
           <p className="text-gray-500">{meetings.length} samtal registrerade</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="btn-primary">
-          <Plus className="w-4 h-4 mr-2" />
-          Nytt handledarsamtal
-        </button>
+        {profileId && (
+          <button onClick={() => setShowForm(true)} className="btn-primary">
+            <Plus className="w-4 h-4 mr-2" />
+            Nytt handledarsamtal
+          </button>
+        )}
       </div>
 
-      {isLoading ? (
+      {/* Trainee selector for supervisors */}
+      {!isTrainee && (
+        <div className="card p-4">
+          <label className="label flex items-center gap-2">
+            <Users className="w-4 h-4" />
+            Välj ST/BT-läkare
+          </label>
+          {trainees.length === 0 ? (
+            <p className="text-gray-500 text-sm">
+              {isSupervisor
+                ? 'Du är inte tilldelad som handledare för några ST/BT-läkare'
+                : 'Inga ST/BT-läkare på kliniken'}
+            </p>
+          ) : (
+            <select
+              className="input mt-1"
+              value={selectedTraineeId || ''}
+              onChange={(e) => setSelectedTraineeId(e.target.value)}
+            >
+              {trainees.map((t) => (
+                <option key={t.traineeId} value={t.traineeId}>
+                  {t.traineeName} ({t.trackType})
+                </option>
+              ))}
+            </select>
+          )}
+          {selectedTrainee && (
+            <p className="text-sm text-gray-500 mt-2">
+              {selectedTrainee.traineeEmail}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Meetings list */}
+      {!profileId ? (
+        <div className="card p-8 text-center">
+          <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-500">
+            {isTrainee
+              ? 'Din profil kunde inte hittas'
+              : 'Välj en ST/BT-läkare för att se handledarsamtal'}
+          </p>
+        </div>
+      ) : isLoading ? (
         <div className="animate-pulse space-y-4">
           {[1, 2].map((i) => (
             <div key={i} className="card p-4 h-32"></div>
@@ -161,6 +245,11 @@ export default function SupervisionPage() {
               </button>
             </div>
             <form onSubmit={handleSubmit} className="p-4 space-y-4">
+              {!isTrainee && selectedTrainee && (
+                <div className="p-3 bg-blue-50 rounded-lg text-sm">
+                  <span className="font-medium">ST/BT-läkare:</span> {selectedTrainee.traineeName}
+                </div>
+              )}
               <div>
                 <label className="label">Datum *</label>
                 <input

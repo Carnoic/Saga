@@ -1,7 +1,8 @@
 import { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/db.js';
-import { authenticate, canAccessTrainee, requireRole } from '../lib/auth.js';
+import { authenticate, requireRole } from '../lib/auth.js';
 import { createAuditLog } from '../lib/audit.js';
+import { UserRole } from '@saga/shared';
 
 interface FeedbackInput {
   overallRating: number;
@@ -74,7 +75,13 @@ export async function feedbackRoutes(fastify: FastifyInstance) {
         },
       });
 
-      await createAuditLog(userId, 'CREATE', 'RotationFeedback', feedback.id, null, feedback);
+      await createAuditLog({
+        userId,
+        action: 'CREATE',
+        entityType: 'RotationFeedback',
+        entityId: feedback.id,
+        newValue: feedback as unknown as Record<string, unknown>,
+      }, request);
 
       return feedback;
     }
@@ -143,7 +150,7 @@ export async function feedbackRoutes(fastify: FastifyInstance) {
   // Get all feedback for a unit (studierektor only)
   fastify.get<{ Querystring: { unit?: string; from?: string; to?: string } }>(
     '/unit',
-    { preHandler: [authenticate, requireRole(['STUDIEREKTOR', 'ADMIN'])] },
+    { preHandler: requireRole(UserRole.STUDIEREKTOR, UserRole.ADMIN) },
     async (request) => {
       const { unit, from, to } = request.query;
 
@@ -204,7 +211,7 @@ export async function feedbackRoutes(fastify: FastifyInstance) {
   // Get feedback statistics per unit (studierektor only)
   fastify.get<{ Querystring: { from?: string; to?: string } }>(
     '/statistics',
-    { preHandler: [authenticate, requireRole(['STUDIEREKTOR', 'ADMIN'])] },
+    { preHandler: requireRole(UserRole.STUDIEREKTOR, UserRole.ADMIN) },
     async (request) => {
       const { from, to } = request.query;
 

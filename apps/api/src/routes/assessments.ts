@@ -144,7 +144,7 @@ export async function assessmentRoutes(fastify: FastifyInstance) {
     const { traineeProfileId, type, date, context, assessorId, rating, narrativeFeedback, subGoalIds } = parsed.data;
     const user = request.user!;
 
-    if (!(await canWriteTrainee(user.id, user.role, traineeProfileId))) {
+    if (!(await canWriteTrainee(user.id, user.role, user.clinicId, traineeProfileId))) {
       return reply.status(403).send({ error: 'Behörighet saknas' });
     }
 
@@ -220,7 +220,7 @@ export async function assessmentRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Signerade bedömningar kan inte redigeras' });
     }
 
-    if (!(await canWriteTrainee(user.id, user.role, oldAssessment.traineeProfileId))) {
+    if (!(await canWriteTrainee(user.id, user.role, user.clinicId, oldAssessment.traineeProfileId))) {
       return reply.status(403).send({ error: 'Behörighet saknas' });
     }
 
@@ -362,7 +362,7 @@ export async function assessmentRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Signerade bedömningar kan inte tas bort' });
     }
 
-    if (!(await canWriteTrainee(user.id, user.role, assessment.traineeProfileId))) {
+    if (!(await canWriteTrainee(user.id, user.role, user.clinicId, assessment.traineeProfileId))) {
       return reply.status(403).send({ error: 'Behörighet saknas' });
     }
 

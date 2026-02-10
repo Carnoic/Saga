@@ -129,7 +129,7 @@ export async function courseRoutes(fastify: FastifyInstance) {
     const { traineeProfileId, title, provider, startDate, endDate, hours, notes, subGoalIds } = parsed.data;
     const user = request.user!;
 
-    if (!(await canWriteTrainee(user.id, user.role, traineeProfileId))) {
+    if (!(await canWriteTrainee(user.id, user.role, user.clinicId, traineeProfileId))) {
       return reply.status(403).send({ error: 'Behörighet saknas' });
     }
 
@@ -194,7 +194,7 @@ export async function courseRoutes(fastify: FastifyInstance) {
       return reply.status(404).send({ error: 'Kurs hittades inte' });
     }
 
-    if (!(await canWriteTrainee(user.id, user.role, oldCourse.traineeProfileId))) {
+    if (!(await canWriteTrainee(user.id, user.role, user.clinicId, oldCourse.traineeProfileId))) {
       return reply.status(403).send({ error: 'Behörighet saknas' });
     }
 
@@ -256,7 +256,7 @@ export async function courseRoutes(fastify: FastifyInstance) {
       return reply.status(404).send({ error: 'Kurs hittades inte' });
     }
 
-    if (!(await canWriteTrainee(user.id, user.role, course.traineeProfileId))) {
+    if (!(await canWriteTrainee(user.id, user.role, user.clinicId, course.traineeProfileId))) {
       return reply.status(403).send({ error: 'Behörighet saknas' });
     }
 

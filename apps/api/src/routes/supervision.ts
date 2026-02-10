@@ -116,7 +116,7 @@ export async function supervisionRoutes(fastify: FastifyInstance) {
     const { traineeProfileId, date, notes, agreedActions, supervisorId } = parsed.data;
     const user = request.user!;
 
-    if (!(await canWriteTrainee(user.id, user.role, traineeProfileId))) {
+    if (!(await canWriteTrainee(user.id, user.role, user.clinicId, traineeProfileId))) {
       return reply.status(403).send({ error: 'Behörighet saknas' });
     }
 
@@ -181,7 +181,7 @@ export async function supervisionRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Signerade handledarsamtal kan inte redigeras' });
     }
 
-    if (!(await canWriteTrainee(user.id, user.role, oldMeeting.traineeProfileId))) {
+    if (!(await canWriteTrainee(user.id, user.role, user.clinicId, oldMeeting.traineeProfileId))) {
       return reply.status(403).send({ error: 'Behörighet saknas' });
     }
 
@@ -290,7 +290,7 @@ export async function supervisionRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Signerade handledarsamtal kan inte tas bort' });
     }
 
-    if (!(await canWriteTrainee(user.id, user.role, meeting.traineeProfileId))) {
+    if (!(await canWriteTrainee(user.id, user.role, user.clinicId, meeting.traineeProfileId))) {
       return reply.status(403).send({ error: 'Behörighet saknas' });
     }
 
