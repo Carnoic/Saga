@@ -15,6 +15,7 @@ import AssessmentsPage from './pages/AssessmentsPage';
 import SupervisionPage from './pages/SupervisionPage';
 import CoursesPage from './pages/CoursesPage';
 import StudyDirectorPage from './pages/StudyDirectorPage';
+import AdminPage from './pages/AdminPage';
 import TraineeDetailPage from './pages/TraineeDetailPage';
 import ExportPage from './pages/ExportPage';
 import SettingsPage from './pages/SettingsPage';
@@ -90,8 +91,18 @@ export default function App() {
         <Route
           path="studierektor"
           element={
-            <ProtectedRoute allowedRoles={[UserRole.STUDIEREKTOR, UserRole.ADMIN]}>
+            <ProtectedRoute allowedRoles={[UserRole.STUDIEREKTOR]}>
               <StudyDirectorPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Admin routes */}
+        <Route
+          path="admin"
+          element={
+            <ProtectedRoute allowedRoles={[UserRole.ADMIN]}>
+              <AdminPage />
             </ProtectedRoute>
           }
         />
