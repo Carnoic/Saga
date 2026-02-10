@@ -64,8 +64,9 @@ model Clinic {
   createdAt    DateTime @default(now())
 
   // Relations
-  users           User[]
-  traineeProfiles TraineeProfile[]
+  users             User[]
+  traineeProfiles   TraineeProfile[]
+  feedbackTemplates FeedbackTemplate[]
 }
 
 // ============================================
@@ -94,6 +95,7 @@ model TraineeProfile {
   supervisionMeetings SupervisionMeeting[]
   certificates        Certificate[]
   subGoalProgress     TraineeSubGoalProgress[]
+  rotationFeedbacks   RotationFeedback[]
 
   @@index([clinicId])
   @@index([supervisorId])
@@ -176,6 +178,7 @@ model Rotation {
 
   // Relations
   rotationSubGoals RotationSubGoal[]
+  feedback         RotationFeedback?
 
   @@index([traineeProfileId])
   @@index([startDate, endDate])
@@ -359,6 +362,81 @@ model NotificationPreference {
   updatedAt             DateTime @updatedAt
 
   @@index([userId])
+}
+
+// ============================================
+// ROTATION FEEDBACK
+// ============================================
+
+model RotationFeedback {
+  id               String   @id @default(uuid())
+  rotationId       String   @unique
+  rotation         Rotation @relation(fields: [rotationId], references: [id], onDelete: Cascade)
+  traineeProfileId String
+  traineeProfile   TraineeProfile @relation(fields: [traineeProfileId], references: [id], onDelete: Cascade)
+
+  // Standard ratings (1-5)
+  overallRating        Int      // Overall experience
+  educationalValue     Int      // Educational value
+  supervisionQuality   Int      // Quality of supervision
+  workEnvironment      Int      // Work environment and culture
+
+  // Free text
+  positives            String?  // What was good?
+  improvements         String?  // What could be improved?
+  otherComments        String?  // Any other comments
+
+  // Metadata
+  anonymous            Boolean  @default(false) // If true, name hidden from clinic view
+  submittedAt          DateTime @default(now())
+
+  // Future: Link to custom questions
+  customAnswers        FeedbackAnswer[]
+
+  @@index([rotationId])
+  @@index([traineeProfileId])
+}
+
+// For future: Custom feedback questions per clinic
+model FeedbackTemplate {
+  id        String   @id @default(uuid())
+  clinicId  String
+  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  questions FeedbackQuestion[]
+
+  @@index([clinicId])
+}
+
+model FeedbackQuestion {
+  id           String   @id @default(uuid())
+  templateId   String
+  template     FeedbackTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  questionText String
+  questionType String   // RATING, TEXT, MULTIPLE_CHOICE
+  options      String?  // JSON array for multiple choice options
+  required     Boolean  @default(false)
+  sortOrder    Int      @default(0)
+
+  answers      FeedbackAnswer[]
+
+  @@index([templateId])
+}
+
+model FeedbackAnswer {
+  id         String   @id @default(uuid())
+  feedbackId String
+  feedback   RotationFeedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  questionId String
+  question   FeedbackQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answer     String   // The answer (rating number, text, or selected option)
+
+  @@unique([feedbackId, questionId])
+  @@index([feedbackId])
 }
 
 // ============================================

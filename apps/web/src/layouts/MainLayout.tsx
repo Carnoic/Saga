@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   BookOpen,
+  MessageSquare,
 } from 'lucide-react';
 import { useState } from 'react';
 import NotificationBell from '../components/NotificationBell';
@@ -27,6 +28,7 @@ const navigation = [
   { name: 'Bedömningar', href: '/bedomningar', icon: ClipboardCheck, roles: [UserRole.ST_BT, UserRole.HANDLEDARE] },
   { name: 'Handledarsamtal', href: '/handledarsamtal', icon: Users, roles: [UserRole.ST_BT, UserRole.HANDLEDARE] },
   { name: 'Kurser', href: '/kurser', icon: GraduationCap, roles: [UserRole.ST_BT] },
+  { name: 'Feedback', href: '/feedback', icon: MessageSquare, roles: [UserRole.ST_BT] },
   { name: 'Studierektor', href: '/studierektor', icon: BookOpen, roles: [UserRole.STUDIEREKTOR, UserRole.ADMIN] },
   { name: 'Export', href: '/export', icon: Download, roles: [UserRole.ST_BT] },
 ];

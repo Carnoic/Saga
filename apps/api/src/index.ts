@@ -22,6 +22,7 @@ import { dashboardRoutes } from './routes/dashboard.js';
 import { exportRoutes } from './routes/export.js';
 import { clinicRoutes } from './routes/clinics.js';
 import { notificationRoutes } from './routes/notifications.js';
+import { feedbackRoutes } from './routes/feedback.js';
 import { startNotificationScheduler } from './lib/notification-service.js';
 import { startEmailScheduler } from './lib/email-service.js';
 
@@ -143,6 +144,7 @@ async function buildApp() {
   await fastify.register(exportRoutes, { prefix: '/api/export' });
   await fastify.register(clinicRoutes, { prefix: '/api/clinics' });
   await fastify.register(notificationRoutes, { prefix: '/api/notifications' });
+  await fastify.register(feedbackRoutes, { prefix: '/api/feedback' });
 
   // Serve frontend static files in production
   if (IS_PRODUCTION && existsSync(FRONTEND_PATH)) {

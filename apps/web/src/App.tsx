@@ -18,6 +18,7 @@ import StudyDirectorPage from './pages/StudyDirectorPage';
 import TraineeDetailPage from './pages/TraineeDetailPage';
 import ExportPage from './pages/ExportPage';
 import SettingsPage from './pages/SettingsPage';
+import FeedbackPage from './pages/FeedbackPage';
 
 // Protected route wrapper
 function ProtectedRoute({
@@ -82,6 +83,7 @@ export default function App() {
         <Route path="handledarsamtal" element={<SupervisionPage />} />
         <Route path="kurser" element={<CoursesPage />} />
         <Route path="export" element={<ExportPage />} />
+        <Route path="feedback" element={<FeedbackPage />} />
         <Route path="installningar" element={<SettingsPage />} />
 
         {/* Study director routes */}
