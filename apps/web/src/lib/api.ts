@@ -43,7 +43,7 @@ export const api = {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      body: data ? JSON.stringify(data) : undefined,
+      body: JSON.stringify(data ?? {}),
     });
     return handleResponse<T>(response);
   },
