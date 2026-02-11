@@ -56,6 +56,17 @@ const fastify = Fastify({
       },
 });
 
+// Handle empty JSON bodies gracefully (e.g. POST with Content-Type: application/json but no body)
+fastify.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
+  try {
+    const json = body && (body as string).length > 0 ? JSON.parse(body as string) : {};
+    done(null, json);
+  } catch (err: any) {
+    err.statusCode = 400;
+    done(err, undefined);
+  }
+});
+
 async function buildApp() {
   // CORS - in production, same origin so less restrictive
   const corsOrigins = IS_PRODUCTION
