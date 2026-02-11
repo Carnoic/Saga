@@ -15,7 +15,7 @@ const createUserSchema = z.object({
 
 const createClinicSchema = z.object({
   name: z.string().min(2),
-  region: z.string().optional(),
+  organization: z.string().optional(),
 });
 
 export async function adminRoutes(fastify: FastifyInstance) {
@@ -168,7 +168,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
         required: ['name'],
         properties: {
           name: { type: 'string', minLength: 2 },
-          region: { type: 'string' },
+          organization: { type: 'string' },
         },
       },
     },
@@ -181,7 +181,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: parsed.error.errors[0].message });
     }
 
-    const { name, region } = parsed.data;
+    const { name, organization } = parsed.data;
 
     // Check if clinic name already exists
     const existingClinic = await prisma.clinic.findFirst({ where: { name } });
@@ -192,7 +192,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
     const clinic = await prisma.clinic.create({
       data: {
         name,
-        region: region || null,
+        organization: organization || null,
       },
     });
 
@@ -201,7 +201,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
       action: 'CREATE',
       entityType: 'Clinic',
       entityId: clinic.id,
-      newValue: { name, region },
+      newValue: { name, organization },
     }, request);
 
     return { clinic };
