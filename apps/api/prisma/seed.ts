@@ -13,16 +13,16 @@ async function main() {
   // Create clinic
   const clinic = await prisma.clinic.create({
     data: {
-      name: 'Akademiska sjukhuset',
-      organization: 'Region Uppsala',
+      name: 'Norrlands universitetssjukhus',
+      organization: 'Region Västerbotten',
     },
   });
   console.log('✅ Clinic created:', clinic.name);
 
   const clinic2 = await prisma.clinic.create({
     data: {
-      name: 'Karolinska Universitetssjukhuset',
-      organization: 'Region Stockholm',
+      name: 'Skellefteå lasarett',
+      organization: 'Region Västerbotten',
     },
   });
 
@@ -207,12 +207,12 @@ async function main() {
   const rotations = [
     { unit: 'Medicinkliniken', specialtyArea: 'Internmedicin', startDate: '2023-03-01', endDate: '2023-08-31', planned: false },
     { unit: 'Akutmottagningen', specialtyArea: 'Akutsjukvård', startDate: '2023-09-01', endDate: '2024-02-29', planned: false },
-    { unit: 'Vårdcentralen Centrum', specialtyArea: 'Allmänmedicin', startDate: '2024-03-01', endDate: '2024-08-31', planned: false },
+    { unit: 'Vårdcentralen Ålidhem', specialtyArea: 'Allmänmedicin', startDate: '2024-03-01', endDate: '2024-08-31', planned: false },
     { unit: 'Psykiatriska kliniken', specialtyArea: 'Psykiatri', startDate: '2024-09-01', endDate: '2025-02-28', planned: false },
     { unit: 'Barnkliniken', specialtyArea: 'Pediatrik', startDate: '2025-03-01', endDate: '2025-08-31', planned: true },
     { unit: 'Geriatriska kliniken', specialtyArea: 'Geriatrik', startDate: '2025-09-01', endDate: '2026-02-28', planned: true },
     { unit: 'Kvinnokliniken', specialtyArea: 'Gynekologi', startDate: '2026-03-01', endDate: '2026-08-31', planned: true },
-    { unit: 'Vårdcentralen Öster', specialtyArea: 'Allmänmedicin', startDate: '2026-09-01', endDate: '2027-08-31', planned: true },
+    { unit: 'Vårdcentralen Ersboda', specialtyArea: 'Allmänmedicin', startDate: '2026-09-01', endDate: '2027-08-31', planned: true },
   ];
 
   for (const r of rotations) {
@@ -269,7 +269,7 @@ async function main() {
   const courses = [
     { title: 'ATLS - Advanced Trauma Life Support', provider: 'Svensk Kirurgisk Förening', hours: 24 },
     { title: 'AKO - Akut kardiologi', provider: 'Svenska Läkarsällskapet', hours: 16 },
-    { title: 'Ledarskap i vården', provider: 'Karolinska Institutet', hours: 40 },
+    { title: 'Ledarskap i vården', provider: 'Umeå universitet', hours: 40 },
     { title: 'Patientcentrerad konsultation', provider: 'SFAM', hours: 8 },
   ];
 
@@ -295,7 +295,7 @@ async function main() {
         traineeProfileId: trainee1Profile.id,
         type: certTypes[i % 5],
         title: `Intyg ${i + 1}`,
-        issuer: i % 2 === 0 ? 'Akademiska sjukhuset' : 'Karolinska Institutet',
+        issuer: i % 2 === 0 ? 'Norrlands universitetssjukhus' : 'Umeå universitet',
         issueDate: new Date(2023, 3 + i, 1),
         filePath: `placeholder_${i + 1}.pdf`,
         fileName: `intyg_${i + 1}.pdf`,
