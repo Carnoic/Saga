@@ -170,6 +170,8 @@ export default function TraineeSchedulePage() {
                     {yearRotations.map((rotation: any) => {
                       const start = new Date(rotation.startDate);
                       const end = new Date(rotation.endDate);
+                      const now = new Date();
+                      const isCurrent = !rotation.planned && start <= now && end >= now;
                       const startMonth = start.getFullYear() < currentYear ? 0 : start.getMonth();
                       const endMonth = end.getFullYear() > currentYear ? 11 : end.getMonth();
                       const span = endMonth - startMonth + 1;
@@ -182,7 +184,9 @@ export default function TraineeSchedulePage() {
                             className={`absolute h-full rounded-lg flex items-center px-3 ${
                               rotation.planned
                                 ? 'bg-gray-200 text-gray-700 border-2 border-dashed border-gray-400'
-                                : 'bg-primary-500 text-white shadow-sm'
+                                : isCurrent
+                                  ? 'bg-emerald-500 text-white shadow-sm ring-2 ring-emerald-300'
+                                  : 'bg-primary-500 text-white shadow-sm'
                             }`}
                             style={{
                               left: `${leftPercent}%`,
@@ -207,7 +211,11 @@ export default function TraineeSchedulePage() {
             </div>
 
             {/* Legend */}
-            <div className="flex gap-4 mt-4 text-sm">
+            <div className="flex flex-wrap gap-4 mt-4 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-emerald-500 rounded ring-2 ring-emerald-300" />
+                <span>Pågående</span>
+              </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-primary-500 rounded" />
                 <span>Genomförd</span>
@@ -236,7 +244,11 @@ export default function TraineeSchedulePage() {
                 </div>
               ) : (
                 rotations.map((rotation: any) => (
-                  <div key={rotation.id} className="p-4 hover:bg-gray-50">
+                  <div
+                    key={rotation.id}
+                    className="p-4 hover:bg-gray-50 cursor-pointer"
+                    onClick={() => setCurrentYear(new Date(rotation.startDate).getFullYear())}
+                  >
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-gray-900">{rotation.unit}</span>
                       {rotation.planned && <span className="badge-gray">Planerad</span>}
