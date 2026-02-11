@@ -28,6 +28,7 @@ const navigation = [
   { name: 'Intyg', href: '/intyg', icon: FileText, roles: [UserRole.ST_BT] },
   { name: 'Bedömningar', href: '/bedomningar', icon: ClipboardCheck, roles: [UserRole.ST_BT, UserRole.HANDLEDARE] },
   { name: 'Handledarsamtal', href: '/handledarsamtal', icon: Users, roles: [UserRole.ST_BT, UserRole.HANDLEDARE] },
+  { name: 'Schema', href: '/schema', icon: Calendar, roles: [UserRole.HANDLEDARE, UserRole.STUDIEREKTOR] },
   { name: 'Kurser', href: '/kurser', icon: GraduationCap, roles: [UserRole.ST_BT] },
   { name: 'Feedback', href: '/feedback', icon: MessageSquare, roles: [UserRole.ST_BT] },
   { name: 'Studierektor', href: '/studierektor', icon: BookOpen, roles: [UserRole.STUDIEREKTOR] },

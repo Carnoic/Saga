@@ -17,6 +17,7 @@ import CoursesPage from './pages/CoursesPage';
 import StudyDirectorPage from './pages/StudyDirectorPage';
 import AdminPage from './pages/AdminPage';
 import TraineeDetailPage from './pages/TraineeDetailPage';
+import TraineeSchedulePage from './pages/TraineeSchedulePage';
 import ExportPage from './pages/ExportPage';
 import SettingsPage from './pages/SettingsPage';
 import FeedbackPage from './pages/FeedbackPage';
@@ -82,6 +83,14 @@ export default function App() {
         <Route path="intyg" element={<CertificatesPage />} />
         <Route path="bedomningar" element={<AssessmentsPage />} />
         <Route path="handledarsamtal" element={<SupervisionPage />} />
+        <Route
+          path="schema"
+          element={
+            <ProtectedRoute allowedRoles={[UserRole.HANDLEDARE, UserRole.STUDIEREKTOR]}>
+              <TraineeSchedulePage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="kurser" element={<CoursesPage />} />
         <Route path="export" element={<ExportPage />} />
         <Route path="feedback" element={<FeedbackPage />} />
