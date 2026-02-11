@@ -171,7 +171,7 @@ export default function TraineeSchedulePage() {
                       const start = new Date(rotation.startDate);
                       const end = new Date(rotation.endDate);
                       const now = new Date();
-                      const isCurrent = !rotation.planned && start <= now && end >= now;
+                      const isCurrent = start <= now && end >= now;
                       const startMonth = start.getFullYear() < currentYear ? 0 : start.getMonth();
                       const endMonth = end.getFullYear() > currentYear ? 11 : end.getMonth();
                       const span = endMonth - startMonth + 1;
@@ -182,10 +182,10 @@ export default function TraineeSchedulePage() {
                         <div key={rotation.id} className="relative h-14">
                           <div
                             className={`absolute h-full rounded-lg flex items-center px-3 ${
-                              rotation.planned
-                                ? 'bg-gray-200 text-gray-700 border-2 border-dashed border-gray-400'
-                                : isCurrent
-                                  ? 'bg-emerald-500 text-white shadow-sm ring-2 ring-emerald-300'
+                              isCurrent
+                                ? 'bg-emerald-500 text-white shadow-sm ring-2 ring-emerald-300'
+                                : rotation.planned
+                                  ? 'bg-gray-200 text-gray-700 border-2 border-dashed border-gray-400'
                                   : 'bg-primary-500 text-white shadow-sm'
                             }`}
                             style={{
