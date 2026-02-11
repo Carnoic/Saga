@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../lib/api';
 import { formatDateSv, ASSESSMENT_TYPE_LABELS, AssessmentType, UserRole } from '@saga/shared';
-import { ClipboardCheck, Plus, Trash2, CheckCircle, X, Users } from 'lucide-react';
+import { ClipboardCheck, Plus, Trash2, CheckCircle, X, Users, Ban } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface Trainee {
@@ -17,6 +17,8 @@ export default function AssessmentsPage() {
   const { user, traineeProfile } = useAuth();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [voidTarget, setVoidTarget] = useState<string | null>(null);
+  const [voidReason, setVoidReason] = useState('');
   const [selectedTraineeId, setSelectedTraineeId] = useState<string | null>(null);
   const [form, setForm] = useState({
     type: 'DOPS' as AssessmentType,
@@ -93,6 +95,18 @@ export default function AssessmentsPage() {
       toast.success('Bedömning borttagen');
     },
     onError: (error: any) => toast.error(error.message || 'Kunde inte ta bort'),
+  });
+
+  const voidMutation = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      api.post(`/api/assessments/${id}/void`, { reason }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assessments'] });
+      toast.success('Bedömning makulerad');
+      setVoidTarget(null);
+      setVoidReason('');
+    },
+    onError: (error: any) => toast.error(error.message || 'Kunde inte makulera'),
   });
 
   const resetForm = () => {
@@ -195,28 +209,30 @@ export default function AssessmentsPage() {
       ) : (
         <div className="space-y-4">
           {assessments.map((assessment: any) => (
-            <div key={assessment.id} className="card p-4">
+            <div key={assessment.id} className={`card p-4 ${assessment.voidedAt ? 'bg-gray-100 opacity-70' : ''}`}>
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="badge-primary">
+                    <span className={`badge-primary ${assessment.voidedAt ? 'line-through' : ''}`}>
                       {ASSESSMENT_TYPE_LABELS[assessment.type as AssessmentType]}
                     </span>
                     {assessment.rating && (
-                      <span className="badge-gray">{assessment.rating}/5</span>
+                      <span className={`badge-gray ${assessment.voidedAt ? 'line-through' : ''}`}>{assessment.rating}/5</span>
                     )}
-                    {assessment.signedAt ? (
+                    {assessment.voidedAt ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Makulerad</span>
+                    ) : assessment.signedAt ? (
                       <span className="badge-success">Signerad</span>
                     ) : (
                       <span className="badge-warning">Osignerad</span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-500">{formatDateSv(assessment.date)}</p>
+                  <p className={`text-sm text-gray-500 ${assessment.voidedAt ? 'line-through' : ''}`}>{formatDateSv(assessment.date)}</p>
                   {assessment.context && (
-                    <p className="mt-2 text-gray-700">{assessment.context}</p>
+                    <p className={`mt-2 text-gray-700 ${assessment.voidedAt ? 'line-through' : ''}`}>{assessment.context}</p>
                   )}
                   {assessment.narrativeFeedback && (
-                    <p className="mt-2 text-sm text-gray-600 bg-gray-50 p-2 rounded">
+                    <p className={`mt-2 text-sm text-gray-600 bg-gray-50 p-2 rounded ${assessment.voidedAt ? 'line-through' : ''}`}>
                       {assessment.narrativeFeedback}
                     </p>
                   )}
@@ -225,9 +241,14 @@ export default function AssessmentsPage() {
                       Bedömare: {assessment.assessor.name}
                     </p>
                   )}
+                  {assessment.voidedAt && (
+                    <p className="mt-2 text-sm text-red-600">
+                      Makulerad {formatDateSv(assessment.voidedAt)} av {assessment.voidedBy?.name || 'okänd'}. Anledning: {assessment.voidReason}
+                    </p>
+                  )}
                 </div>
                 <div className="flex gap-2 ml-4">
-                  {canSign && !assessment.signedAt && (
+                  {!assessment.voidedAt && canSign && !assessment.signedAt && (
                     <button
                       onClick={() => signMutation.mutate(assessment.id)}
                       className="btn-success btn-sm"
@@ -236,7 +257,16 @@ export default function AssessmentsPage() {
                       <CheckCircle className="w-4 h-4" />
                     </button>
                   )}
-                  {!assessment.signedAt && (
+                  {!assessment.voidedAt && canSign && assessment.signedAt && (
+                    <button
+                      onClick={() => setVoidTarget(assessment.id)}
+                      className="btn-danger btn-sm"
+                      title="Makulera"
+                    >
+                      <Ban className="w-4 h-4" />
+                    </button>
+                  )}
+                  {!assessment.voidedAt && !assessment.signedAt && (
                     <button
                       onClick={() => {
                         if (confirm('Vill du ta bort denna bedömning?')) {
@@ -252,6 +282,58 @@ export default function AssessmentsPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Void modal */}
+      {voidTarget && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-md w-full">
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Makulera bedömning</h2>
+              <button onClick={() => { setVoidTarget(null); setVoidReason(''); }}>
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <p className="text-sm text-gray-600">
+                Ange anledning till makuleringen. Bedömningen kommer att markeras som makulerad och exkluderas från export.
+              </p>
+              <div>
+                <label className="label">Anledning *</label>
+                <textarea
+                  className="input"
+                  rows={3}
+                  value={voidReason}
+                  onChange={(e) => setVoidReason(e.target.value)}
+                  placeholder="Ange anledning till makulering..."
+                  required
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setVoidTarget(null); setVoidReason(''); }}
+                  className="btn-secondary flex-1"
+                >
+                  Avbryt
+                </button>
+                <button
+                  onClick={() => {
+                    if (!voidReason.trim()) {
+                      toast.error('Ange en anledning');
+                      return;
+                    }
+                    voidMutation.mutate({ id: voidTarget, reason: voidReason.trim() });
+                  }}
+                  disabled={voidMutation.isPending || !voidReason.trim()}
+                  className="btn-danger flex-1"
+                >
+                  Makulera
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

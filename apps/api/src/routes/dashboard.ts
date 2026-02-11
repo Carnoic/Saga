@@ -93,9 +93,9 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
       },
     });
 
-    // Get unsigned assessments count
+    // Get unsigned assessments count (exclude voided)
     const unsignedAssessments = await prisma.assessment.count({
-      where: { traineeProfileId: profileId, signedAt: null },
+      where: { traineeProfileId: profileId, signedAt: null, voidedAt: null },
     });
 
     // Get last supervision meeting
@@ -226,9 +226,9 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
           orderBy: { date: 'desc' },
         });
 
-        // Unsigned assessments
+        // Unsigned assessments (exclude voided)
         const unsignedAssessments = await prisma.assessment.count({
-          where: { traineeProfileId: trainee.id, signedAt: null },
+          where: { traineeProfileId: trainee.id, signedAt: null, voidedAt: null },
         });
 
         // Calculate risk level
@@ -321,7 +321,7 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
         });
 
         const unsignedAssessments = await prisma.assessment.count({
-          where: { traineeProfileId: trainee.id, signedAt: null },
+          where: { traineeProfileId: trainee.id, signedAt: null, voidedAt: null },
         });
 
         return {

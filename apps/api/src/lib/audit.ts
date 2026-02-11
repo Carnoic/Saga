@@ -1,7 +1,7 @@
 import { FastifyRequest } from 'fastify';
 import { prisma } from './db.js';
 
-export type AuditAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'SIGN';
+export type AuditAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'SIGN' | 'VOID';
 
 export interface AuditLogEntry {
   userId: string;

@@ -228,12 +228,12 @@ export async function exportRoutes(fastify: FastifyInstance) {
         orderBy: { startDate: 'asc' },
       }),
       prisma.assessment.findMany({
-        where: { traineeProfileId },
+        where: { traineeProfileId, voidedAt: null },
         include: { assessor: { select: { name: true } } },
         orderBy: { date: 'asc' },
       }),
       prisma.supervisionMeeting.findMany({
-        where: { traineeProfileId },
+        where: { traineeProfileId, voidedAt: null },
         include: { supervisor: { select: { name: true } } },
         orderBy: { date: 'asc' },
       }),
@@ -336,12 +336,12 @@ export async function exportRoutes(fastify: FastifyInstance) {
       prisma.rotation.findMany({ where: { traineeProfileId }, orderBy: { startDate: 'asc' } }),
       prisma.course.findMany({ where: { traineeProfileId }, orderBy: { startDate: 'asc' } }),
       prisma.assessment.findMany({
-        where: { traineeProfileId },
+        where: { traineeProfileId, voidedAt: null },
         include: { assessor: { select: { name: true } } },
         orderBy: { date: 'asc' },
       }),
       prisma.supervisionMeeting.findMany({
-        where: { traineeProfileId },
+        where: { traineeProfileId, voidedAt: null },
         include: { supervisor: { select: { name: true } } },
         orderBy: { date: 'asc' },
       }),
@@ -412,10 +412,12 @@ export async function exportRoutes(fastify: FastifyInstance) {
         rotations: { orderBy: { startDate: 'asc' } },
         courses: { orderBy: { startDate: 'asc' } },
         assessments: {
+          where: { voidedAt: null },
           include: { assessor: { select: { name: true } } },
           orderBy: { date: 'asc' },
         },
         supervisionMeetings: {
+          where: { voidedAt: null },
           include: { supervisor: { select: { name: true } } },
           orderBy: { date: 'asc' },
         },

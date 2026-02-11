@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../lib/api';
 import { formatDateSv, UserRole } from '@saga/shared';
-import { Users, Plus, Trash2, CheckCircle, X } from 'lucide-react';
+import { Users, Plus, Trash2, CheckCircle, X, Ban } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface Trainee {
@@ -17,6 +17,8 @@ export default function SupervisionPage() {
   const { user, traineeProfile } = useAuth();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [voidTarget, setVoidTarget] = useState<string | null>(null);
+  const [voidReason, setVoidReason] = useState('');
   const [selectedTraineeId, setSelectedTraineeId] = useState<string | null>(null);
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -83,6 +85,18 @@ export default function SupervisionPage() {
       toast.success('Handledarsamtal borttaget');
     },
     onError: (error: any) => toast.error(error.message || 'Kunde inte ta bort'),
+  });
+
+  const voidMutation = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      api.post(`/api/supervision/${id}/void`, { reason }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['supervision'] });
+      toast.success('Handledarsamtal makulerat');
+      setVoidTarget(null);
+      setVoidReason('');
+    },
+    onError: (error: any) => toast.error(error.message || 'Kunde inte makulera'),
   });
 
   const resetForm = () => {
@@ -176,14 +190,16 @@ export default function SupervisionPage() {
       ) : (
         <div className="space-y-4">
           {meetings.map((meeting: any) => (
-            <div key={meeting.id} className="card p-4">
+            <div key={meeting.id} className={`card p-4 ${meeting.voidedAt ? 'bg-gray-100 opacity-70' : ''}`}>
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="font-medium text-gray-900">
+                    <span className={`font-medium text-gray-900 ${meeting.voidedAt ? 'line-through' : ''}`}>
                       {formatDateSv(meeting.date)}
                     </span>
-                    {meeting.signedAt ? (
+                    {meeting.voidedAt ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Makulerad</span>
+                    ) : meeting.signedAt ? (
                       <span className="badge-success">Signerat</span>
                     ) : (
                       <span className="badge-warning">Ej signerat</span>
@@ -197,18 +213,23 @@ export default function SupervisionPage() {
                   {meeting.notes && (
                     <div className="mb-2">
                       <p className="text-sm text-gray-500">Anteckningar:</p>
-                      <p className="text-gray-700">{meeting.notes}</p>
+                      <p className={`text-gray-700 ${meeting.voidedAt ? 'line-through' : ''}`}>{meeting.notes}</p>
                     </div>
                   )}
                   {meeting.agreedActions && (
                     <div>
                       <p className="text-sm text-gray-500">Överenskomna åtgärder:</p>
-                      <p className="text-gray-700">{meeting.agreedActions}</p>
+                      <p className={`text-gray-700 ${meeting.voidedAt ? 'line-through' : ''}`}>{meeting.agreedActions}</p>
                     </div>
+                  )}
+                  {meeting.voidedAt && (
+                    <p className="mt-2 text-sm text-red-600">
+                      Makulerad {formatDateSv(meeting.voidedAt)} av {meeting.voidedBy?.name || 'okänd'}. Anledning: {meeting.voidReason}
+                    </p>
                   )}
                 </div>
                 <div className="flex gap-2 ml-4">
-                  {canSign && !meeting.signedAt && (
+                  {!meeting.voidedAt && canSign && !meeting.signedAt && (
                     <button
                       onClick={() => signMutation.mutate(meeting.id)}
                       className="btn-success btn-sm"
@@ -216,7 +237,16 @@ export default function SupervisionPage() {
                       <CheckCircle className="w-4 h-4" />
                     </button>
                   )}
-                  {!meeting.signedAt && (
+                  {!meeting.voidedAt && canSign && meeting.signedAt && (
+                    <button
+                      onClick={() => setVoidTarget(meeting.id)}
+                      className="btn-danger btn-sm"
+                      title="Makulera"
+                    >
+                      <Ban className="w-4 h-4" />
+                    </button>
+                  )}
+                  {!meeting.voidedAt && !meeting.signedAt && (
                     <button
                       onClick={() => {
                         if (confirm('Ta bort handledarsamtalet?')) {
@@ -232,6 +262,58 @@ export default function SupervisionPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Void modal */}
+      {voidTarget && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-md w-full">
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Makulera handledarsamtal</h2>
+              <button onClick={() => { setVoidTarget(null); setVoidReason(''); }}>
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <p className="text-sm text-gray-600">
+                Ange anledning till makuleringen. Handledarsamtalet kommer att markeras som makulerat och exkluderas från export.
+              </p>
+              <div>
+                <label className="label">Anledning *</label>
+                <textarea
+                  className="input"
+                  rows={3}
+                  value={voidReason}
+                  onChange={(e) => setVoidReason(e.target.value)}
+                  placeholder="Ange anledning till makulering..."
+                  required
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setVoidTarget(null); setVoidReason(''); }}
+                  className="btn-secondary flex-1"
+                >
+                  Avbryt
+                </button>
+                <button
+                  onClick={() => {
+                    if (!voidReason.trim()) {
+                      toast.error('Ange en anledning');
+                      return;
+                    }
+                    voidMutation.mutate({ id: voidTarget, reason: voidReason.trim() });
+                  }}
+                  disabled={voidMutation.isPending || !voidReason.trim()}
+                  className="btn-danger flex-1"
+                >
+                  Makulera
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

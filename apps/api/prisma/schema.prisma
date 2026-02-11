@@ -36,6 +36,8 @@ model User {
   sessions              Session[]
   notifications         Notification[]
   notificationPreference NotificationPreference?
+  voidedAssessments       Assessment[]          @relation("VoidedAssessment")
+  voidedSupervisionMeetings SupervisionMeeting[] @relation("VoidedSupervision")
 
   @@index([email])
   @@index([clinicId])
@@ -243,6 +245,10 @@ model Assessment {
   rating            Int?      // 1-5
   narrativeFeedback String?
   signedAt          DateTime?
+  voidedAt          DateTime?
+  voidedById        String?
+  voidedBy          User?     @relation("VoidedAssessment", fields: [voidedById], references: [id])
+  voidReason        String?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -278,6 +284,10 @@ model SupervisionMeeting {
   supervisorId     String?
   supervisor       User?     @relation("SupervisorMeeting", fields: [supervisorId], references: [id])
   signedAt         DateTime?
+  voidedAt         DateTime?
+  voidedById       String?
+  voidedBy         User?     @relation("VoidedSupervision", fields: [voidedById], references: [id])
+  voidReason       String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 

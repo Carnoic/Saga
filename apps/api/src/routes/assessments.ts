@@ -65,6 +65,7 @@ export async function assessmentRoutes(fastify: FastifyInstance) {
       where,
       include: {
         assessor: { select: { id: true, name: true } },
+        voidedBy: { select: { id: true, name: true } },
         assessmentSubGoals: {
           include: { subGoal: true },
         },
@@ -331,6 +332,76 @@ export async function assessmentRoutes(fastify: FastifyInstance) {
       'assessment',
       `${assessmentLabel}-bedömning`
     );
+
+    return { assessment: updatedAssessment };
+  });
+
+  // Void assessment (makulera)
+  fastify.post('/:id/void', {
+    schema: {
+      tags: ['Assessments'],
+      summary: 'Makulera bedömning',
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+        },
+      },
+      body: {
+        type: 'object',
+        required: ['reason'],
+        properties: {
+          reason: { type: 'string', minLength: 1 },
+        },
+      },
+    },
+    preHandler: authenticate,
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const { reason } = request.body as { reason: string };
+    const user = request.user!;
+
+    if (user.role !== UserRole.HANDLEDARE && user.role !== UserRole.STUDIEREKTOR && user.role !== UserRole.ADMIN) {
+      return reply.status(403).send({ error: 'Endast handledare/studierektor/admin kan makulera' });
+    }
+
+    const assessment = await prisma.assessment.findUnique({ where: { id } });
+    if (!assessment) {
+      return reply.status(404).send({ error: 'Bedömning hittades inte' });
+    }
+
+    if (assessment.voidedAt) {
+      return reply.status(400).send({ error: 'Bedömningen är redan makulerad' });
+    }
+
+    if (!(await canAccessTrainee(user.id, user.role, user.clinicId, assessment.traineeProfileId))) {
+      return reply.status(403).send({ error: 'Behörighet saknas' });
+    }
+
+    const updatedAssessment = await prisma.assessment.update({
+      where: { id },
+      data: {
+        voidedAt: new Date(),
+        voidedById: user.id,
+        voidReason: reason,
+      },
+      include: {
+        assessor: { select: { id: true, name: true } },
+        voidedBy: { select: { id: true, name: true } },
+        assessmentSubGoals: {
+          include: { subGoal: true },
+        },
+      },
+    });
+
+    await createAuditLog({
+      userId: user.id,
+      action: 'VOID',
+      entityType: 'Assessment',
+      entityId: id,
+      newValue: { voidedAt: updatedAssessment.voidedAt?.toISOString(), voidedBy: user.name, reason },
+    }, request);
 
     return { assessment: updatedAssessment };
   });
