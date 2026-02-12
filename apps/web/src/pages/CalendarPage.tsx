@@ -339,6 +339,8 @@ export default function CalendarPage() {
                 {yearRotations.map((rotation: any) => {
                   const start = new Date(rotation.startDate);
                   const end = new Date(rotation.endDate);
+                  const now = new Date();
+                  const isCurrent = start <= now && end >= now;
 
                   // Use preview if dragging this rotation
                   const isDragging = dragState?.rotationId === rotation.id;
@@ -362,9 +364,11 @@ export default function CalendarPage() {
                         className={`absolute h-full rounded-lg flex items-center transition-all ${
                           isDragging ? 'shadow-lg ring-2 ring-primary-400 z-10' : ''
                         } ${
-                          rotation.planned
-                            ? 'bg-gray-200 text-gray-700 border-2 border-dashed border-gray-400'
-                            : 'bg-primary-500 text-white shadow-sm'
+                          isCurrent
+                            ? 'bg-emerald-500 text-white shadow-sm ring-2 ring-emerald-300'
+                            : rotation.planned
+                              ? 'bg-gray-200 text-gray-700 border-2 border-dashed border-gray-400'
+                              : 'bg-primary-500 text-white shadow-sm'
                         }`}
                         style={{
                           left: `${leftPercent}%`,
@@ -412,7 +416,11 @@ export default function CalendarPage() {
         </div>
 
         {/* Legend */}
-        <div className="flex gap-4 mt-4 text-sm">
+        <div className="flex flex-wrap gap-4 mt-4 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-emerald-500 rounded ring-2 ring-emerald-300"></div>
+            <span>Pågående</span>
+          </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-primary-500 rounded"></div>
             <span>Genomförd</span>

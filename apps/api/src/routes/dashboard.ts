@@ -73,13 +73,12 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
       }),
     ]);
 
-    // Current rotation
+    // Current rotation (includes planned rotations that span today)
     const currentRotation = await prisma.rotation.findFirst({
       where: {
         traineeProfileId: profileId,
         startDate: { lte: now },
         endDate: { gte: now },
-        planned: false,
       },
     });
 
