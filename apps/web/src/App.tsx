@@ -21,6 +21,7 @@ import TraineeSchedulePage from './pages/TraineeSchedulePage';
 import ExportPage from './pages/ExportPage';
 import SettingsPage from './pages/SettingsPage';
 import FeedbackPage from './pages/FeedbackPage';
+import KvastPage from './pages/KvastPage';
 
 // Protected route wrapper
 function ProtectedRoute({
@@ -94,6 +95,14 @@ export default function App() {
         <Route path="kurser" element={<CoursesPage />} />
         <Route path="export" element={<ExportPage />} />
         <Route path="feedback" element={<FeedbackPage />} />
+        <Route
+          path="kvast"
+          element={
+            <ProtectedRoute allowedRoles={[UserRole.UTVARDERINGSGRUPP, UserRole.ADMIN, UserRole.ST_BT]}>
+              <KvastPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="installningar" element={<SettingsPage />} />
 
         {/* Study director routes */}

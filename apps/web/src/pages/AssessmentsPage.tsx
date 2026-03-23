@@ -5,6 +5,7 @@ import { api } from '../lib/api';
 import { formatDateSv, ASSESSMENT_TYPE_LABELS, AssessmentType, UserRole } from '@saga/shared';
 import { ClipboardCheck, Plus, Trash2, CheckCircle, X, Users, Ban } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { KvastResponseCard } from './KvastPage';
 
 interface Trainee {
   traineeId: string;
@@ -68,6 +69,13 @@ export default function AssessmentsPage() {
     queryFn: () => api.get(`/api/assessments?traineeProfileId=${profileId}`),
     enabled: !!profileId,
   });
+
+  const { data: kvastData } = useQuery({
+    queryKey: ['kvast', profileId],
+    queryFn: () => api.get(`/api/kvast?traineeProfileId=${profileId}`),
+    enabled: !!profileId && isTrainee,
+  });
+  const kvastResponses = kvastData?.responses || [];
 
   const createMutation = useMutation({
     mutationFn: (data: any) => api.post('/api/assessments', { ...data, traineeProfileId: profileId }),
@@ -282,6 +290,33 @@ export default function AssessmentsPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* KVAST 360 section for trainees */}
+      {isTrainee && profileId && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <ClipboardCheck className="w-5 h-5" />
+            KVAST 360-utvärderingar ({kvastResponses.length})
+          </h2>
+          {kvastResponses.length === 0 ? (
+            <div className="card p-6 text-center">
+              <p className="text-gray-500 text-sm">
+                Inga KVAST-utvärderingar inkomna ännu
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {kvastResponses.map((r: any, idx: number) => (
+                <KvastResponseCard
+                  key={r.id}
+                  response={r}
+                  index={kvastResponses.length - idx}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 

@@ -38,6 +38,7 @@ model User {
   notificationPreference NotificationPreference?
   voidedAssessments       Assessment[]          @relation("VoidedAssessment")
   voidedSupervisionMeetings SupervisionMeeting[] @relation("VoidedSupervision")
+  kvast360Responses     Kvast360Response[]     @relation("Kvast360Submitter")
 
   @@index([email])
   @@index([clinicId])
@@ -98,6 +99,7 @@ model TraineeProfile {
   certificates        Certificate[]
   subGoalProgress     TraineeSubGoalProgress[]
   rotationFeedbacks   RotationFeedback[]
+  kvast360Responses   Kvast360Response[]
 
   @@index([clinicId])
   @@index([supervisorId])
@@ -447,6 +449,40 @@ model FeedbackAnswer {
 
   @@unique([feedbackId, questionId])
   @@index([feedbackId])
+}
+
+// ============================================
+// KVAST 360 EVALUATION
+// ============================================
+
+model Kvast360Response {
+  id               String   @id @default(uuid())
+  traineeProfileId String
+  traineeProfile   TraineeProfile @relation(fields: [traineeProfileId], references: [id], onDelete: Cascade)
+  submittedAt      DateTime @default(now())
+  submittedById    String?
+  submittedBy      User?    @relation("Kvast360Submitter", fields: [submittedById], references: [id])
+
+  // Section 1: Who is responding
+  respondentType   String   // SPECIALISTSJUKSKOTERSKA, UNDERSKOTERSKA, LAKARE_ANNAN_SPECIALITET, LAKARE_EGEN_SPECIALITET, ADMINISTRATIV_PERSONAL, ANNAN_SJUKSKOTERSKA
+
+  // Section 2: What is good
+  positiveFeedback    String?
+
+  // Section 3: What needs improvement
+  improvementFeedback String?
+
+  // Section 4: Competency matrix (JSON)
+  competencies     String   // JSON object with 11 competency ratings
+
+  // Comments for "Bör adresseras"
+  addressComments  String?
+
+  // Section 5: Other
+  otherComments    String?
+
+  @@index([traineeProfileId])
+  @@index([submittedAt])
 }
 
 // ============================================

@@ -17,6 +17,7 @@ import {
   BookOpen,
   MessageSquare,
   Shield,
+  ClipboardList,
 } from 'lucide-react';
 import { useState } from 'react';
 import NotificationBell from '../components/NotificationBell';
@@ -31,6 +32,7 @@ const navigation = [
   { name: 'Schema', href: '/schema', icon: Calendar, roles: [UserRole.HANDLEDARE, UserRole.STUDIEREKTOR] },
   { name: 'Kurser', href: '/kurser', icon: GraduationCap, roles: [UserRole.ST_BT] },
   { name: 'Feedback', href: '/feedback', icon: MessageSquare, roles: [UserRole.ST_BT] },
+  { name: 'KVAST 360', href: '/kvast', icon: ClipboardList, roles: [UserRole.UTVARDERINGSGRUPP, UserRole.ST_BT] },
   { name: 'Studierektor', href: '/studierektor', icon: BookOpen, roles: [UserRole.STUDIEREKTOR] },
   { name: 'Administration', href: '/admin', icon: Shield, roles: [UserRole.ADMIN] },
   { name: 'Export', href: '/export', icon: Download, roles: [UserRole.ST_BT] },

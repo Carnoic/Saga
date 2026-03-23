@@ -13,6 +13,7 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
+  ClipboardList,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -404,6 +405,67 @@ function DashboardSkeleton() {
   );
 }
 
+function UtvarderingsgruppDashboard() {
+  const { user } = useAuth();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['kvast-trainees'],
+    queryFn: () => api.get('/api/kvast/trainees'),
+  });
+
+  const trainees = data?.trainees || [];
+
+  if (isLoading) {
+    return <DashboardSkeleton />;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Utvärderingsgrupp</h1>
+        <p className="text-gray-500">KVAST 360-graders evaluering av ST/BT-läkare</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="card p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center">
+              <Users className="w-5 h-5 text-primary-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{trainees.length}</p>
+              <p className="text-sm text-gray-500">ST/BT-läkare att utvärdera</p>
+            </div>
+          </div>
+        </div>
+        <div className="card p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-lg bg-success-100 flex items-center justify-center">
+              <ClipboardList className="w-5 h-5 text-success-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">KVAST 360</p>
+              <p className="text-sm text-gray-500">Version 2 – 2024</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="card p-6">
+        <h2 className="font-semibold text-gray-900 mb-4">Kom igång</h2>
+        <p className="text-gray-600 mb-4">
+          Gå till KVAST 360-sidan för att fylla i en 360-graders evaluering för en ST/BT-läkare.
+          Dina svar är konfidentiella och används för att stödja ST-läkarens utveckling.
+        </p>
+        <Link to="/kvast" className="btn-primary inline-flex items-center gap-2">
+          <ClipboardList className="w-4 h-4" />
+          Öppna KVAST-formuläret
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
 
@@ -413,6 +475,10 @@ export default function DashboardPage() {
 
   if (user?.role === UserRole.HANDLEDARE) {
     return <SupervisorDashboard />;
+  }
+
+  if (user?.role === UserRole.UTVARDERINGSGRUPP) {
+    return <UtvarderingsgruppDashboard />;
   }
 
   if (user?.role === UserRole.STUDIEREKTOR || user?.role === UserRole.ADMIN) {

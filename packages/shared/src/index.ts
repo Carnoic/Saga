@@ -9,6 +9,22 @@ export enum UserRole {
   HANDLEDARE = 'HANDLEDARE',
   STUDIEREKTOR = 'STUDIEREKTOR',
   ADMIN = 'ADMIN',
+  UTVARDERINGSGRUPP = 'UTVARDERINGSGRUPP',
+}
+
+export enum KvastRespondentType {
+  SPECIALISTSJUKSKOTERSKA = 'SPECIALISTSJUKSKOTERSKA',
+  UNDERSKOTERSKA = 'UNDERSKOTERSKA',
+  LAKARE_ANNAN_SPECIALITET = 'LAKARE_ANNAN_SPECIALITET',
+  LAKARE_EGEN_SPECIALITET = 'LAKARE_EGEN_SPECIALITET',
+  ADMINISTRATIV_PERSONAL = 'ADMINISTRATIV_PERSONAL',
+  ANNAN_SJUKSKOTERSKA = 'ANNAN_SJUKSKOTERSKA',
+}
+
+export enum KvastCompetencyRating {
+  INGA_PROBLEM = 'INGA_PROBLEM',
+  BOR_ADRESSERAS = 'BOR_ADRESSERAS',
+  EJ_OBSERVERAT = 'EJ_OBSERVERAT',
 }
 
 export enum TrackType {
@@ -326,6 +342,47 @@ export interface CertificateUpdateInput {
 }
 
 // ============================================
+// INTERFACES - KVAST 360
+// ============================================
+
+export interface KvastCompetencies {
+  kommunikationPatienter: KvastCompetencyRating;
+  kommunikationMedarbetare: KvastCompetencyRating;
+  samarbetsformaga: KvastCompetencyRating;
+  ledarskap: KvastCompetencyRating;
+  etik: KvastCompetencyRating;
+  klinisktResonemang: KvastCompetencyRating;
+  organisationsformaga: KvastCompetencyRating;
+  pedagogik: KvastCompetencyRating;
+  mangfaldJamstallhet: KvastCompetencyRating;
+  vardhygien: KvastCompetencyRating;
+  patientsakerhet: KvastCompetencyRating;
+}
+
+export interface Kvast360Response {
+  id: string;
+  traineeProfileId: string;
+  submittedAt: Date;
+  submittedById?: string;
+  respondentType: KvastRespondentType;
+  positiveFeedback?: string;
+  improvementFeedback?: string;
+  competencies: KvastCompetencies;
+  addressComments?: string;
+  otherComments?: string;
+}
+
+export interface Kvast360ResponseCreateInput {
+  traineeProfileId: string;
+  respondentType: KvastRespondentType;
+  positiveFeedback?: string;
+  improvementFeedback?: string;
+  competencies: KvastCompetencies;
+  addressComments?: string;
+  otherComments?: string;
+}
+
+// ============================================
 // INTERFACES - Audit Log
 // ============================================
 
@@ -498,6 +555,50 @@ export const USER_ROLE_LABELS: Record<UserRole, string> = {
   [UserRole.HANDLEDARE]: 'Handledare',
   [UserRole.STUDIEREKTOR]: 'Studierektor',
   [UserRole.ADMIN]: 'Administratör',
+  [UserRole.UTVARDERINGSGRUPP]: 'Utvärderingsgrupp',
+};
+
+export const KVAST_RESPONDENT_LABELS: Record<KvastRespondentType, string> = {
+  [KvastRespondentType.SPECIALISTSJUKSKOTERSKA]: 'Specialistsjuksköterska (anestesi eller IVA)',
+  [KvastRespondentType.UNDERSKOTERSKA]: 'Undersköterska',
+  [KvastRespondentType.LAKARE_ANNAN_SPECIALITET]: 'Läkare inom annan specialitet',
+  [KvastRespondentType.LAKARE_EGEN_SPECIALITET]: 'Läkare egen specialitet',
+  [KvastRespondentType.ADMINISTRATIV_PERSONAL]: 'Administrativ personal',
+  [KvastRespondentType.ANNAN_SJUKSKOTERSKA]: 'Annan sjuksköterska',
+};
+
+export const KVAST_COMPETENCY_KEYS: (keyof KvastCompetencies)[] = [
+  'kommunikationPatienter',
+  'kommunikationMedarbetare',
+  'samarbetsformaga',
+  'ledarskap',
+  'etik',
+  'klinisktResonemang',
+  'organisationsformaga',
+  'pedagogik',
+  'mangfaldJamstallhet',
+  'vardhygien',
+  'patientsakerhet',
+];
+
+export const KVAST_COMPETENCY_LABELS: Record<keyof KvastCompetencies, string> = {
+  kommunikationPatienter: 'Kommunikation med patienter och anhöriga',
+  kommunikationMedarbetare: 'Kommunikation med medarbetare/kollegor',
+  samarbetsformaga: 'Samarbetsförmåga (lyhörd, hittar gemensamma, multiprofessionella lösningar)',
+  ledarskap: 'Ledarskap (leda teamet, prioritera, struktur, planera, vara följare)',
+  etik: 'Etik (identifiera och analysera etiska problem)',
+  klinisktResonemang: 'Kliniskt resonemang och bedömningsförmåga',
+  organisationsformaga: 'Organisationsförmåga (optimera egen och andras tid och resurser för att lösa uppgifter)',
+  pedagogik: 'Pedagogik (undervisa, handleda, återkoppla)',
+  mangfaldJamstallhet: 'Mångfald & Jämställdhet (bemöta alla oavsett diskrimineringsgrund med respekt)',
+  vardhygien: 'Vårdhygien (följa rutiner)',
+  patientsakerhet: 'Patientsäkerhetsarbete (arbeta säkert, dokumentera, skriva relevanta avvikelser)',
+};
+
+export const KVAST_RATING_LABELS: Record<KvastCompetencyRating, string> = {
+  [KvastCompetencyRating.INGA_PROBLEM]: 'Inga problem',
+  [KvastCompetencyRating.BOR_ADRESSERAS]: 'Bör adresseras',
+  [KvastCompetencyRating.EJ_OBSERVERAT]: 'Ej observerat',
 };
 
 export const TRACK_TYPE_LABELS: Record<TrackType, string> = {

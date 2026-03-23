@@ -9,13 +9,39 @@ const createUserSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
   name: z.string().min(2),
-  role: z.enum(['ST_BT', 'HANDLEDARE', 'STUDIEREKTOR', 'ADMIN']),
+  role: z.enum(['ST_BT', 'HANDLEDARE', 'STUDIEREKTOR', 'ADMIN', 'UTVARDERINGSGRUPP']),
   clinicId: z.string().uuid().optional(),
 });
 
 const createClinicSchema = z.object({
   name: z.string().min(2),
   organization: z.string().optional(),
+});
+
+const createTemplateSchema = z.object({
+  clinicId: z.string().uuid(),
+  name: z.string().min(1),
+});
+
+const updateTemplateSchema = z.object({
+  name: z.string().min(1).optional(),
+  isActive: z.boolean().optional(),
+});
+
+const createQuestionSchema = z.object({
+  questionText: z.string().min(1),
+  questionType: z.enum(['RATING', 'TEXT', 'MULTIPLE_CHOICE']),
+  options: z.string().optional(),
+  required: z.boolean().optional(),
+  sortOrder: z.number().int().optional(),
+});
+
+const updateQuestionSchema = z.object({
+  questionText: z.string().min(1).optional(),
+  questionType: z.enum(['RATING', 'TEXT', 'MULTIPLE_CHOICE']).optional(),
+  options: z.string().nullable().optional(),
+  required: z.boolean().optional(),
+  sortOrder: z.number().int().optional(),
 });
 
 export async function adminRoutes(fastify: FastifyInstance) {
@@ -252,6 +278,289 @@ export async function adminRoutes(fastify: FastifyInstance) {
       entityType: 'Clinic',
       entityId: id,
       oldValue: { name: clinic.name },
+    }, request);
+
+    return { success: true };
+  });
+
+  // ============================================
+  // FEEDBACK TEMPLATES
+  // ============================================
+
+  // List templates for a clinic
+  fastify.get('/feedback-templates', {
+    schema: {
+      tags: ['Admin'],
+      summary: 'Lista feedback-mallar för en klinik',
+      querystring: {
+        type: 'object',
+        required: ['clinicId'],
+        properties: {
+          clinicId: { type: 'string', format: 'uuid' },
+        },
+      },
+    },
+    preHandler: requireRole(UserRole.ADMIN),
+  }, async (request: FastifyRequest) => {
+    const { clinicId } = request.query as { clinicId: string };
+
+    const templates = await prisma.feedbackTemplate.findMany({
+      where: { clinicId },
+      include: {
+        questions: { orderBy: { sortOrder: 'asc' } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return { templates };
+  });
+
+  // Create template
+  fastify.post('/feedback-templates', {
+    schema: {
+      tags: ['Admin'],
+      summary: 'Skapa feedback-mall',
+    },
+    preHandler: requireRole(UserRole.ADMIN),
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const currentUser = request.user!;
+    const parsed = createTemplateSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.errors[0].message });
+    }
+
+    const { clinicId, name } = parsed.data;
+
+    const template = await prisma.feedbackTemplate.create({
+      data: { clinicId, name },
+      include: { questions: true },
+    });
+
+    await createAuditLog({
+      userId: currentUser.id,
+      action: 'CREATE',
+      entityType: 'FeedbackTemplate',
+      entityId: template.id,
+      newValue: { clinicId, name },
+    }, request);
+
+    return { template };
+  });
+
+  // Update template
+  fastify.patch('/feedback-templates/:id', {
+    schema: {
+      tags: ['Admin'],
+      summary: 'Uppdatera feedback-mall',
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: { id: { type: 'string', format: 'uuid' } },
+      },
+    },
+    preHandler: requireRole(UserRole.ADMIN),
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const currentUser = request.user!;
+
+    const parsed = updateTemplateSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.errors[0].message });
+    }
+
+    const existing = await prisma.feedbackTemplate.findUnique({ where: { id } });
+    if (!existing) {
+      return reply.status(404).send({ error: 'Mall hittades inte' });
+    }
+
+    const template = await prisma.feedbackTemplate.update({
+      where: { id },
+      data: parsed.data,
+      include: { questions: { orderBy: { sortOrder: 'asc' } } },
+    });
+
+    await createAuditLog({
+      userId: currentUser.id,
+      action: 'UPDATE',
+      entityType: 'FeedbackTemplate',
+      entityId: id,
+      oldValue: { name: existing.name, isActive: existing.isActive },
+      newValue: parsed.data,
+    }, request);
+
+    return { template };
+  });
+
+  // Delete template (cascades questions + answers)
+  fastify.delete('/feedback-templates/:id', {
+    schema: {
+      tags: ['Admin'],
+      summary: 'Ta bort feedback-mall',
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: { id: { type: 'string', format: 'uuid' } },
+      },
+    },
+    preHandler: requireRole(UserRole.ADMIN),
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const currentUser = request.user!;
+
+    const existing = await prisma.feedbackTemplate.findUnique({ where: { id } });
+    if (!existing) {
+      return reply.status(404).send({ error: 'Mall hittades inte' });
+    }
+
+    await prisma.feedbackTemplate.delete({ where: { id } });
+
+    await createAuditLog({
+      userId: currentUser.id,
+      action: 'DELETE',
+      entityType: 'FeedbackTemplate',
+      entityId: id,
+      oldValue: { name: existing.name, clinicId: existing.clinicId },
+    }, request);
+
+    return { success: true };
+  });
+
+  // ============================================
+  // FEEDBACK QUESTIONS
+  // ============================================
+
+  // Add question to template
+  fastify.post('/feedback-templates/:templateId/questions', {
+    schema: {
+      tags: ['Admin'],
+      summary: 'Lägg till fråga i feedback-mall',
+      params: {
+        type: 'object',
+        required: ['templateId'],
+        properties: { templateId: { type: 'string', format: 'uuid' } },
+      },
+    },
+    preHandler: requireRole(UserRole.ADMIN),
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { templateId } = request.params as { templateId: string };
+    const currentUser = request.user!;
+
+    const parsed = createQuestionSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.errors[0].message });
+    }
+
+    const template = await prisma.feedbackTemplate.findUnique({ where: { id: templateId } });
+    if (!template) {
+      return reply.status(404).send({ error: 'Mall hittades inte' });
+    }
+
+    const { questionText, questionType, options, required, sortOrder } = parsed.data;
+
+    // If no sortOrder provided, put it last
+    let finalSortOrder = sortOrder;
+    if (finalSortOrder === undefined) {
+      const maxSort = await prisma.feedbackQuestion.aggregate({
+        where: { templateId },
+        _max: { sortOrder: true },
+      });
+      finalSortOrder = (maxSort._max.sortOrder ?? -1) + 1;
+    }
+
+    const question = await prisma.feedbackQuestion.create({
+      data: {
+        templateId,
+        questionText,
+        questionType,
+        options: options || null,
+        required: required ?? false,
+        sortOrder: finalSortOrder,
+      },
+    });
+
+    await createAuditLog({
+      userId: currentUser.id,
+      action: 'CREATE',
+      entityType: 'FeedbackQuestion',
+      entityId: question.id,
+      newValue: { templateId, questionText, questionType },
+    }, request);
+
+    return { question };
+  });
+
+  // Update question
+  fastify.patch('/feedback-questions/:id', {
+    schema: {
+      tags: ['Admin'],
+      summary: 'Uppdatera feedback-fråga',
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: { id: { type: 'string', format: 'uuid' } },
+      },
+    },
+    preHandler: requireRole(UserRole.ADMIN),
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const currentUser = request.user!;
+
+    const parsed = updateQuestionSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.errors[0].message });
+    }
+
+    const existing = await prisma.feedbackQuestion.findUnique({ where: { id } });
+    if (!existing) {
+      return reply.status(404).send({ error: 'Fråga hittades inte' });
+    }
+
+    const question = await prisma.feedbackQuestion.update({
+      where: { id },
+      data: parsed.data,
+    });
+
+    await createAuditLog({
+      userId: currentUser.id,
+      action: 'UPDATE',
+      entityType: 'FeedbackQuestion',
+      entityId: id,
+      oldValue: { questionText: existing.questionText, questionType: existing.questionType },
+      newValue: parsed.data,
+    }, request);
+
+    return { question };
+  });
+
+  // Delete question
+  fastify.delete('/feedback-questions/:id', {
+    schema: {
+      tags: ['Admin'],
+      summary: 'Ta bort feedback-fråga',
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: { id: { type: 'string', format: 'uuid' } },
+      },
+    },
+    preHandler: requireRole(UserRole.ADMIN),
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const currentUser = request.user!;
+
+    const existing = await prisma.feedbackQuestion.findUnique({ where: { id } });
+    if (!existing) {
+      return reply.status(404).send({ error: 'Fråga hittades inte' });
+    }
+
+    await prisma.feedbackQuestion.delete({ where: { id } });
+
+    await createAuditLog({
+      userId: currentUser.id,
+      action: 'DELETE',
+      entityType: 'FeedbackQuestion',
+      entityId: id,
+      oldValue: { questionText: existing.questionText, templateId: existing.templateId },
     }, request);
 
     return { success: true };

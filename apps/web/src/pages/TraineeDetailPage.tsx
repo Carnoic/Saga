@@ -1,9 +1,17 @@
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import { formatDateSv, TRACK_TYPE_LABELS, ASSESSMENT_TYPE_LABELS, AssessmentType } from '@saga/shared';
-import { User, Target, Calendar, FileText, ClipboardCheck, Users, ArrowLeft } from 'lucide-react';
+import {
+  formatDateSv,
+  TRACK_TYPE_LABELS,
+  ASSESSMENT_TYPE_LABELS,
+  AssessmentType,
+  KvastCompetencyRating,
+  KVAST_COMPETENCY_KEYS,
+} from '@saga/shared';
+import { User, Target, Calendar, FileText, ClipboardCheck, Users, ArrowLeft, ClipboardList } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { KvastResponseCard } from './KvastPage';
 
 export default function TraineeDetailPage() {
   const { traineeId } = useParams<{ traineeId: string }>();
@@ -26,6 +34,12 @@ export default function TraineeDetailPage() {
     enabled: !!traineeId,
   });
 
+  const { data: kvastData } = useQuery({
+    queryKey: ['kvast', traineeId],
+    queryFn: () => api.get(`/api/kvast?traineeProfileId=${traineeId}`),
+    enabled: !!traineeId,
+  });
+
   if (dashboardLoading) {
     return (
       <div className="animate-pulse space-y-6">
@@ -44,6 +58,7 @@ export default function TraineeDetailPage() {
   const progress = dashboard?.progress;
   const rotations = rotationsData?.rotations || [];
   const assessments = assessmentsData?.assessments || [];
+  const kvastResponses = kvastData?.responses || [];
 
   if (!profile) {
     return (
@@ -204,6 +219,68 @@ export default function TraineeDetailPage() {
           </div>
         ) : (
           <p className="text-gray-500">Inget handledarsamtal registrerat</p>
+        )}
+      </div>
+
+      {/* KVAST 360 */}
+      <div className="card p-6">
+        <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <ClipboardList className="w-5 h-5" />
+          KVAST 360-utvärderingar ({kvastResponses.length})
+        </h2>
+
+        {kvastResponses.length === 0 ? (
+          <p className="text-gray-500">Inga KVAST-utvärderingar inkomna</p>
+        ) : (
+          <>
+            {/* Summary */}
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              {(() => {
+                const borAdresseras = kvastResponses.reduce((acc: number, r: any) => {
+                  return acc + KVAST_COMPETENCY_KEYS.filter(
+                    (k) => r.competencies?.[k] === KvastCompetencyRating.BOR_ADRESSERAS
+                  ).length;
+                }, 0);
+                const ingaProblem = kvastResponses.reduce((acc: number, r: any) => {
+                  return acc + KVAST_COMPETENCY_KEYS.filter(
+                    (k) => r.competencies?.[k] === KvastCompetencyRating.INGA_PROBLEM
+                  ).length;
+                }, 0);
+                const ejObserverat = kvastResponses.reduce((acc: number, r: any) => {
+                  return acc + KVAST_COMPETENCY_KEYS.filter(
+                    (k) => r.competencies?.[k] === KvastCompetencyRating.EJ_OBSERVERAT
+                  ).length;
+                }, 0);
+                return (
+                  <>
+                    <div className="text-center p-3 bg-success-50 rounded-lg">
+                      <p className="text-2xl font-bold text-success-600">{ingaProblem}</p>
+                      <p className="text-xs text-success-700">Inga problem</p>
+                    </div>
+                    <div className="text-center p-3 bg-amber-50 rounded-lg">
+                      <p className="text-2xl font-bold text-amber-600">{borAdresseras}</p>
+                      <p className="text-xs text-amber-700">Bör adresseras</p>
+                    </div>
+                    <div className="text-center p-3 bg-gray-50 rounded-lg">
+                      <p className="text-2xl font-bold text-gray-500">{ejObserverat}</p>
+                      <p className="text-xs text-gray-600">Ej observerat</p>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+
+            {/* Individual responses */}
+            <div className="space-y-2">
+              {kvastResponses.map((r: any, idx: number) => (
+                <KvastResponseCard
+                  key={r.id}
+                  response={r}
+                  index={kvastResponses.length - idx}
+                />
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>
