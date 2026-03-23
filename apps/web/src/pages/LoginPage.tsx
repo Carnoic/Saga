@@ -128,6 +128,7 @@ export default function LoginPage() {
               <p><strong>Studierektor:</strong> studierektor@saga.se / studierektor123</p>
               <p><strong>Handledare:</strong> handledare1@saga.se / handledare123</p>
               <p><strong>ST-läkare:</strong> stlakare1@saga.se / trainee123</p>
+              <p><strong>Utvärderingsgrupp:</strong> utvardering@saga.se / utvardering123</p>
             </div>
           </div>
         </div>

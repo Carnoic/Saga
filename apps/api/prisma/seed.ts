@@ -75,6 +75,19 @@ async function main() {
   });
   console.log('✅ Supervisors created');
 
+  // Create evaluation group user (KVAST360)
+  const uvPassword = await hashPassword('utvardering123');
+  await prisma.user.create({
+    data: {
+      email: 'utvardering@saga.se',
+      password: uvPassword,
+      name: 'Utvärderingsgrupp',
+      role: 'UTVARDERINGSGRUPP',
+      clinicId: clinic.id,
+    },
+  });
+  console.log('✅ Evaluation group user created: utvardering@saga.se');
+
   // Create goal specification with subgoals
   const goalSpec = await prisma.goalSpec.create({
     data: {
@@ -359,6 +372,10 @@ async function main() {
   console.log('  BT-läkare:');
   console.log('    Email:    btlakare1@saga.se');
   console.log('    Password: trainee123');
+  console.log('');
+  console.log('  Utvärderingsgrupp (KVAST360):');
+  console.log('    Email:    utvardering@saga.se');
+  console.log('    Password: utvardering123');
   console.log('');
   console.log('═══════════════════════════════════════════════════════════');
 }
